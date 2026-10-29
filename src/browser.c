@@ -7,8 +7,8 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-typedef struct Tab { GtkWidget *view,*label,*box; guint64 checked,blocked,scripts; gboolean engine_ok; } Tab;
-static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*downloads_box,*downloads_pop;
+typedef struct Tab { GtkWidget *view,*label,*box; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
+static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*downloads_box,*downloads_pop,*list_status;
 static WebKitWebContext *context;
 static GHashTable *disabled;
 static GPtrArray *tabs;
@@ -45,7 +45,7 @@ static void refresh_controls(void) {
     gtk_button_set_label(GTK_BUTTON(reload_btn),webkit_web_view_is_loading(v)?"Detener":"Recargar");
     char *s=g_strdup_printf("%s — Babinium",title?title:"Nueva pestaña");gtk_window_set_title(GTK_WINDOW(window),s);g_free(s);
     gboolean on=site_enabled(t);setting_shield=TRUE;gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(shield),on);setting_shield=FALSE;
-    s=g_strdup_printf("%s · %"G_GUINT64_FORMAT,on?(t->engine_ok?"Bloqueo":"Iniciando"):"Sin bloqueo",t->blocked);
+    s=g_strdup_printf("%s · %"G_GUINT64_FORMAT,on?(t->engine_ok?"Bloqueo":t->engine_seen?"Error bloqueo":"Iniciando"):"Sin bloqueo",t->blocked);
     gtk_button_set_label(GTK_BUTTON(shield),s);g_free(s);
     gtk_widget_set_tooltip_text(shield,"Activar o desactivar el bloqueo para este sitio (Ctrl+B). Se recarga la pestaña.");
 }
@@ -61,7 +61,7 @@ static void entry_activate(GtkEntry *e,gpointer unused){(void)unused;Tab *t=curr
 static void title_changed(GObject *obj,GParamSpec *ps,Tab *t){(void)ps;const char *s=webkit_web_view_get_title(WEBKIT_WEB_VIEW(obj));gtk_label_set_text(GTK_LABEL(t->label),s?s:"Nueva pestaña");if(t==current())refresh_controls();}
 static void changed(GObject *obj,GParamSpec *ps,Tab *t){(void)obj;(void)ps;if(t==current())refresh_controls();}
 static void load_changed(WebKitWebView *v,WebKitLoadEvent event,Tab *t){
-    if(event==WEBKIT_LOAD_STARTED){t->checked=t->blocked=t->scripts=0;log_event("load_started",webkit_web_view_get_uri(v));}
+    if(event==WEBKIT_LOAD_STARTED)log_event("load_started",webkit_web_view_get_uri(v));
     if(event==WEBKIT_LOAD_COMMITTED)log_event("load_committed",webkit_web_view_get_uri(v));
     if(event==WEBKIT_LOAD_FINISHED)log_event("load_finished",webkit_web_view_get_uri(v));
     if(t==current())refresh_controls();
@@ -76,6 +76,7 @@ static gboolean page_message(WebKitWebView *v,WebKitUserMessage *m,Tab *t){
     (void)v;const char *name=webkit_user_message_get_name(m);
     if(!strcmp(name,"bb-stats")){
         g_variant_get(webkit_user_message_get_parameters(m),"(tttb)",&t->checked,&t->blocked,&t->scripts,&t->engine_ok);
+        t->engine_seen=TRUE;
         char *s=g_strdup_printf("{\"checked\":%"G_GUINT64_FORMAT",\"blocked\":%"G_GUINT64_FORMAT",\"script_batches\":%"G_GUINT64_FORMAT",\"engine\":%s}",t->checked,t->blocked,t->scripts,t->engine_ok?"true":"false");log_event("block_stats",s);g_free(s);if(t==current())refresh_controls();return TRUE;
     }
     if(!strcmp(name,"bb-block")){char *s=g_variant_print(webkit_user_message_get_parameters(m),FALSE);log_event("blocked_request",s);g_free(s);return TRUE;}
@@ -94,7 +95,7 @@ static gboolean fullscreen_leave(WebKitWebView *v,gpointer unused){(void)v;(void
 static void terminated(WebKitWebView *v,WebKitWebProcessTerminationReason reason,Tab *t){(void)v;(void)t;char *s=g_strdup_printf("Proceso web terminado (%d); recargá la pestaña",reason);log_event("web_process_terminated",s);gtk_window_set_title(GTK_WINDOW(window),s);g_free(s);}
 static Tab *new_tab(const char *uri,gboolean select){
     Tab *t=g_new0(Tab,1);t->box=gtk_box_new(GTK_ORIENTATION_VERTICAL,0);
-    t->view=WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,"web-context",context,NULL));
+    t->view=GTK_WIDGET(g_object_new(WEBKIT_TYPE_WEB_VIEW,"web-context",context,NULL));
     WebKitSettings *s=webkit_web_view_get_settings(WEBKIT_WEB_VIEW(t->view));
     webkit_settings_set_enable_developer_extras(s,audit);
     webkit_settings_set_media_playback_requires_user_gesture(s,!autoplay);
@@ -120,7 +121,8 @@ static Tab *new_tab(const char *uri,gboolean select){
     g_signal_connect(t->view,"enter-fullscreen",G_CALLBACK(fullscreen_enter),NULL);g_signal_connect(t->view,"leave-fullscreen",G_CALLBACK(fullscreen_leave),NULL);
     g_signal_connect(t->view,"web-process-terminated",G_CALLBACK(terminated),t);
     gtk_widget_show_all(t->box);if(select)gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),n);
-    if(uri)go(t,uri);return t;
+    if(uri)go(t,uri);
+    return t;
 }
 static void switch_page(GtkNotebook *n,GtkWidget *page,guint num,gpointer unused){(void)n;(void)page;(void)num;(void)unused;refresh_controls();}
 static void navigate(GtkButton *b,gpointer which){(void)b;Tab *t=current();if(!t)return;WebKitWebView *v=WEBKIT_WEB_VIEW(t->view);switch(GPOINTER_TO_INT(which)){case 0:webkit_web_view_go_back(v);break;case 1:webkit_web_view_go_forward(v);break;default:if(webkit_web_view_is_loading(v))webkit_web_view_stop_loading(v);else webkit_web_view_reload(v);}}
@@ -151,6 +153,7 @@ static void download_started(WebKitWebContext *ctx,WebKitDownload *w,gpointer un
 static void updater_finished(GObject *o,GAsyncResult *res,gpointer unused){
     (void)unused;GError *error=NULL;gboolean ok=g_subprocess_wait_check_finish(G_SUBPROCESS(o),res,&error);updating=FALSE;
     log_event(ok?"lists_updated":"lists_update_failed",error?error->message:"");
+    gtk_label_set_text(GTK_LABEL(list_status),ok?"Listas verificadas · actualización automática cada 6 h":"Falló la actualización · se conservan las listas anteriores");
     if(ok){char *idx=g_build_filename(filters_dir,"current","engine.bin",NULL);for(guint i=0;i<tabs->len;i++){Tab *t=g_ptr_array_index(tabs,i);webkit_web_view_send_message_to_page(WEBKIT_WEB_VIEW(t->view),webkit_user_message_new("bb-reload",g_variant_new("(s)",idx)),NULL,NULL,NULL);}g_free(idx);}
     g_clear_error(&error);g_object_unref(o);
 }
@@ -158,7 +161,7 @@ static gboolean update_lists(gpointer force){
     if(updating||no_update||no_block)return G_SOURCE_REMOVE;
     char *helper=g_build_filename(bin_dir,"babinium-filter-update",NULL);char *compiler=g_build_filename(bin_dir,"babinium-filter",NULL);
     GError *err=NULL;GSubprocess *p=g_subprocess_new(G_SUBPROCESS_FLAGS_NONE,&err,helper,"--cache",filters_dir,"--data",data_dir,"--compiler",compiler,force?"--force":"--if-due",NULL);
-    if(p){updating=TRUE;g_subprocess_wait_check_async(p,NULL,updater_finished,NULL);}else{log_event("lists_update_failed",err->message);g_clear_error(&err);}g_free(helper);g_free(compiler);return G_SOURCE_REMOVE;
+    if(p){updating=TRUE;gtk_label_set_text(GTK_LABEL(list_status),"Actualizando listas en segundo plano…");g_subprocess_wait_check_async(p,NULL,updater_finished,NULL);}else{log_event("lists_update_failed",err->message);gtk_label_set_text(GTK_LABEL(list_status),"No se pudo iniciar la actualización");g_clear_error(&err);}g_free(helper);g_free(compiler);return G_SOURCE_REMOVE;
 }
 static gboolean update_tick(gpointer unused){(void)unused;update_lists(NULL);return G_SOURCE_CONTINUE;}
 static void manual_update(GtkButton *b,gpointer unused){(void)b;(void)unused;update_lists(GINT_TO_POINTER(1));}
@@ -228,7 +231,7 @@ int main(int argc,char **argv){
     back=button("Atrás",G_CALLBACK(navigate),GINT_TO_POINTER(0));forward=button("Adelante",G_CALLBACK(navigate),GINT_TO_POINTER(1));reload_btn=button("Recargar",G_CALLBACK(navigate),GINT_TO_POINTER(2));
     address=gtk_entry_new();gtk_entry_set_placeholder_text(GTK_ENTRY(address),"Dirección o búsqueda");gtk_box_pack_start(GTK_BOX(toolbar),address,TRUE,TRUE,0);g_signal_connect(address,"activate",G_CALLBACK(entry_activate),NULL);
     shield=gtk_toggle_button_new_with_label("Bloqueo");gtk_box_pack_start(GTK_BOX(toolbar),shield,FALSE,FALSE,0);g_signal_connect(shield,"toggled",G_CALLBACK(toggle_block),NULL);
-    GtkWidget *dl=gtk_menu_button_new();gtk_button_set_label(GTK_BUTTON(dl),"Descargas");gtk_box_pack_start(GTK_BOX(toolbar),dl,FALSE,FALSE,0);downloads_pop=gtk_popover_new(dl);downloads_box=gtk_box_new(GTK_ORIENTATION_VERTICAL,6);gtk_container_set_border_width(GTK_CONTAINER(downloads_box),10);gtk_container_add(GTK_CONTAINER(downloads_pop),downloads_box);GtkWidget *u=gtk_button_new_with_label("Actualizar listas");gtk_box_pack_start(GTK_BOX(downloads_box),u,FALSE,FALSE,0);g_signal_connect(u,"clicked",G_CALLBACK(manual_update),NULL);gtk_widget_show_all(downloads_box);gtk_menu_button_set_popover(GTK_MENU_BUTTON(dl),downloads_pop);
+    GtkWidget *dl=gtk_menu_button_new();gtk_button_set_label(GTK_BUTTON(dl),"Descargas");gtk_box_pack_start(GTK_BOX(toolbar),dl,FALSE,FALSE,0);downloads_pop=gtk_popover_new(dl);downloads_box=gtk_box_new(GTK_ORIENTATION_VERTICAL,6);gtk_container_set_border_width(GTK_CONTAINER(downloads_box),10);gtk_container_add(GTK_CONTAINER(downloads_pop),downloads_box);list_status=gtk_label_new(no_update?"Listas incluidas · actualización desactivada en esta prueba":"Listas incluidas · actualización automática cada 6 h");gtk_label_set_line_wrap(GTK_LABEL(list_status),TRUE);gtk_box_pack_start(GTK_BOX(downloads_box),list_status,FALSE,FALSE,0);GtkWidget *u=gtk_button_new_with_label("Actualizar listas");gtk_box_pack_start(GTK_BOX(downloads_box),u,FALSE,FALSE,0);g_signal_connect(u,"clicked",G_CALLBACK(manual_update),NULL);gtk_widget_show_all(downloads_box);gtk_menu_button_set_popover(GTK_MENU_BUTTON(dl),downloads_pop);
     button("+",G_CALLBACK(add_tab),NULL);notebook=gtk_notebook_new();gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook),TRUE);gtk_box_pack_start(GTK_BOX(root),notebook,TRUE,TRUE,0);
     g_signal_connect_after(notebook,"switch-page",G_CALLBACK(switch_page),NULL);g_signal_connect(window,"destroy",G_CALLBACK(gtk_main_quit),NULL);g_signal_connect(window,"key-press-event",G_CALLBACK(key_press),NULL);g_signal_connect(window,"map-event",G_CALLBACK(mapped),NULL);g_signal_connect(window,"draw",G_CALLBACK(drawn),NULL);
     if(argc<2)new_tab("about:blank",TRUE);else for(int i=1;i<argc;i++)new_tab(argv[i],TRUE);

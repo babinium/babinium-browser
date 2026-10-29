@@ -1,5 +1,6 @@
 #!/bin/bash
 set -euo pipefail
+make build/bin/babinium-browser
 make -j2
 make resources
 make test
