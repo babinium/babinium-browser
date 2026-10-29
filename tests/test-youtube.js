@@ -20,7 +20,7 @@ async function fixture({avc=true,vp9=false,av1=false,retried=false}={}) {
         URL,location:{hostname:'www.youtube.com',href:'https://www.youtube.com/watch?v=video',reload:()=>result.reloads++},
         navigator:{mediaCapabilities:capabilities},MediaSource:{isTypeSupported:()=>true},HTMLMediaElement:MediaElement,
         sessionStorage:{getItem:key=>storage.get(key),setItem:(key,value)=>storage.set(key,value)},
-        document:{readyState:'complete',addEventListener:(name,handler)=>handlers[name]=handler,querySelector:()=>null,getElementById:()=>({getPlayerResponse:()=>result.response})},
+        document:{readyState:'complete',addEventListener:(name,handler)=>handlers[name]=handler,querySelector:()=>null,getElementById:()=>({getPlayerResponse:()=>result.response,setPlaybackQualityRange:(min,max)=>result.range=[min,max]})},
         setInterval:fn=>{intervals.push(fn);return intervals.length;},clearInterval:()=>{}
     };
     context.window=context;context.top=context;vm.createContext(context);vm.runInContext(code,context);
@@ -59,4 +59,10 @@ test('retry with normal codecs if a video offers no AVC stream',async()=>{
     f.intervals[0]();
     assert.equal(f.reloads,1);
     assert.equal(f.context.MediaSource.isTypeSupported('video/webm; codecs="vp9"'),true);
+});
+test('request 360p initially and release the limit when the user opens player settings',async()=>{
+    const f=await fixture();f.response={videoDetails:{videoId:'video'}};f.intervals[1]();
+    assert.deepEqual(f.range,['medium','medium']);
+    f.handlers.pointerdown({isTrusted:true,target:{closest:()=>true}});
+    assert.deepEqual(f.range,['small','highres']);
 });
