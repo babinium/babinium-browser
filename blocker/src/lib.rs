@@ -105,4 +105,10 @@ mod tests {
         let e=engine(); let mut copy=Engine::default(); copy.deserialize(&e.serialize()).unwrap();
         assert!(copy.url_cosmetic_resources("https://example.org/").hide_selectors.contains(".sponsor"));
     }
+    #[test] fn procedural_operator_is_not_treated_as_css() {
+        let mut s=FilterSet::new(false);
+        s.add_filters(["example.org###ad:has-text(Sponsored):remove()"],Default::default());
+        let e=Engine::new_with_filter_set(s);let r=e.url_cosmetic_resources("https://example.org/");
+        assert!(r.procedural_actions.iter().any(|v|v.contains("\"type\":\"has-text\"")));
+    }
 }
