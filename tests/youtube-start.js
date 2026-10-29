@@ -8,5 +8,7 @@
     player?.setPlaybackQuality?.('medium');
     const video=document.querySelector('video');
     if(video){video.muted=true;video.play().catch(()=>{});}
-    return JSON.stringify({url:location.href,title:document.title,consentRejected:!!reject,videoFound:!!video,quality:player?.getPlaybackQuality?.(),playerResponse:player?.getPlayerResponse?.()?.playabilityStatus,bodyPreview:document.body.innerText.slice(0,600)});
+    const response=player?.getPlayerResponse?.();
+    const initial=window.ytInitialPlayerResponse;
+    return JSON.stringify({url:location.href,title:document.title,consentRejected:!!reject,videoFound:!!video,quality:player?.getPlaybackQuality?.(),videoId:response?.videoDetails?.videoId,playerResponse:response?.playabilityStatus,initialAds:{placements:initial?.adPlacements?.length??0,slots:initial?.adSlots?.length??0,playerAds:initial?.playerAds?.length??0},playerAds:{placements:response?.adPlacements?.length??0,slots:response?.adSlots?.length??0,playerAds:response?.playerAds?.length??0},bodyPreview:document.body.innerText.slice(0,600)});
 })();
