@@ -42,6 +42,8 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
   para reducir el trabajo gráfico, manteniendo el ajuste manual y su persistencia.
   Los menús reconocidos son inglés y español; si YouTube cambia la interfaz o
   usa otro idioma, se mantiene su comportamiento normal.
+- [x] Conservar el control del usuario cuando abra el menú durante la
+  configuración inicial; la versión 0.3.1 se probó con selección real de 720p.
 
 ## Interfaz y datos
 

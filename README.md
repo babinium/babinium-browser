@@ -8,7 +8,8 @@ la simplicidad de surf; la interfaz es nueva. Licencia GPL-3.0-o-posterior.
 Se validaron reproducción real de YouTube, bloqueo de solicitudes publicitarias
 y modificación de datos del reproductor. La eliminación de preroll/midroll no
 quedó demostrada porque el control tampoco mostró anuncios de vídeo.
-Véanse los informes de [validación 0.2](docs/validation-0.2.md) y del
+Véanse los informes de [validación 0.3.1](docs/validation-0.3.1.md),
+[validación 0.3.0](docs/validation-0.3.md), [validación 0.2](docs/validation-0.2.md) y del
 [prototipo inicial 0.1](docs/validation.md).
 La [lista de requisitos y su estado](docs/REQUISITOS.md) conserva todos los
 pedidos y los puntos que todavía requieren pruebas.
@@ -69,7 +70,8 @@ menor consumo. Para reducir el trabajo del compositor, en la primera reproducci�
 se intenta desactivar la iluminación cinemática mediante el propio ajuste de
 YouTube. Se reconoce el menú en inglés y español: si el menú cambia o usa otro
 idioma, se deja intacto. Después se respeta la elección manual del usuario,
-incluso tras reiniciar; YouTube podría cambiar su interfaz interna. La persistencia
+incluso tras reiniciar; este ajuste inicial también se intenta una vez en un
+perfil preexistente. YouTube podría cambiar su interfaz interna. La persistencia
 del perfil no garantiza que Google acepte iniciar
 sesión en todos los navegadores integrados.
 
