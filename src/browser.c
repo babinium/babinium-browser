@@ -26,6 +26,7 @@ static void log_event(const char *event,const char *value) {
     JsonBuilder *b=json_builder_new();json_builder_begin_object(b);
     json_builder_set_member_name(b,"event");json_builder_add_string_value(b,event);
     json_builder_set_member_name(b,"elapsed_ms");json_builder_add_double_value(b,(g_get_monotonic_time()-start_time)/1000.0);
+    json_builder_set_member_name(b,"monotonic_us");json_builder_add_int_value(b,g_get_monotonic_time());
     json_builder_set_member_name(b,"value");json_builder_add_string_value(b,value?value:"");
     json_builder_end_object(b);JsonGenerator *g=json_generator_new();JsonNode *n=json_builder_get_root(b);json_generator_set_root(g,n);
     char *s=json_generator_to_data(g,NULL);fprintf(telemetry,"%s\n",s);fflush(telemetry);
@@ -39,7 +40,7 @@ static void refresh_controls(void) {
     Tab *t=current();if(!t)return;
     WebKitWebView *v=WEBKIT_WEB_VIEW(t->view);
     const char *uri=webkit_web_view_get_uri(v),*title=webkit_web_view_get_title(v);
-    gtk_entry_set_text(GTK_ENTRY(address),uri?uri:"");
+    if(!gtk_widget_has_focus(address))gtk_entry_set_text(GTK_ENTRY(address),uri?uri:"");
     gtk_widget_set_sensitive(back,webkit_web_view_can_go_back(v));gtk_widget_set_sensitive(forward,webkit_web_view_can_go_forward(v));
     gtk_button_set_label(GTK_BUTTON(reload_btn),webkit_web_view_is_loading(v)?"Detener":"Recargar");
     char *s=g_strdup_printf("%s — Babinium",title?title:"Nueva pestaña");gtk_window_set_title(GTK_WINDOW(window),s);g_free(s);
@@ -66,6 +67,11 @@ static void load_changed(WebKitWebView *v,WebKitLoadEvent event,Tab *t){
     if(t==current())refresh_controls();
 }
 static gboolean load_failed(WebKitWebView *v,WebKitLoadEvent event,const char *uri,GError *e,Tab *t){(void)v;(void)event;(void)uri;(void)t;log_event("load_failed",e->message);return FALSE;}
+static gboolean policy(WebKitWebView *v,WebKitPolicyDecision *d,WebKitPolicyDecisionType type,gpointer unused){
+    (void)v;(void)unused;
+    if(type==WEBKIT_POLICY_DECISION_TYPE_RESPONSE&&!webkit_response_policy_decision_is_mime_type_supported(WEBKIT_RESPONSE_POLICY_DECISION(d))){webkit_policy_decision_download(d);return TRUE;}
+    return FALSE;
+}
 static gboolean page_message(WebKitWebView *v,WebKitUserMessage *m,Tab *t){
     (void)v;const char *name=webkit_user_message_get_name(m);
     if(!strcmp(name,"bb-stats")){
@@ -108,6 +114,7 @@ static Tab *new_tab(const char *uri,gboolean select){
     g_signal_connect(t->view,"notify::is-loading",G_CALLBACK(changed),t);
     g_signal_connect(t->view,"load-changed",G_CALLBACK(load_changed),t);
     g_signal_connect(t->view,"load-failed",G_CALLBACK(load_failed),t);
+    g_signal_connect(t->view,"decide-policy",G_CALLBACK(policy),NULL);
     g_signal_connect(t->view,"user-message-received",G_CALLBACK(page_message),t);
     g_signal_connect(t->view,"create",G_CALLBACK(create_view),NULL);g_signal_connect(t->view,"close",G_CALLBACK(web_close),t);
     g_signal_connect(t->view,"enter-fullscreen",G_CALLBACK(fullscreen_enter),NULL);g_signal_connect(t->view,"leave-fullscreen",G_CALLBACK(fullscreen_leave),NULL);
@@ -153,6 +160,7 @@ static gboolean update_lists(gpointer force){
     GError *err=NULL;GSubprocess *p=g_subprocess_new(G_SUBPROCESS_FLAGS_NONE,&err,helper,"--cache",filters_dir,"--data",data_dir,"--compiler",compiler,force?"--force":"--if-due",NULL);
     if(p){updating=TRUE;g_subprocess_wait_check_async(p,NULL,updater_finished,NULL);}else{log_event("lists_update_failed",err->message);g_clear_error(&err);}g_free(helper);g_free(compiler);return G_SOURCE_REMOVE;
 }
+static gboolean update_tick(gpointer unused){(void)unused;update_lists(NULL);return G_SOURCE_CONTINUE;}
 static void manual_update(GtkButton *b,gpointer unused){(void)b;(void)unused;update_lists(GINT_TO_POINTER(1));}
 static gboolean key_press(GtkWidget *w,GdkEventKey *e,gpointer unused){
     (void)w;(void)unused;Tab *t=current();guint k=gdk_keyval_to_lower(e->keyval);gboolean ctrl=e->state&GDK_CONTROL_MASK;
@@ -222,11 +230,11 @@ int main(int argc,char **argv){
     shield=gtk_toggle_button_new_with_label("Bloqueo");gtk_box_pack_start(GTK_BOX(toolbar),shield,FALSE,FALSE,0);g_signal_connect(shield,"toggled",G_CALLBACK(toggle_block),NULL);
     GtkWidget *dl=gtk_menu_button_new();gtk_button_set_label(GTK_BUTTON(dl),"Descargas");gtk_box_pack_start(GTK_BOX(toolbar),dl,FALSE,FALSE,0);downloads_pop=gtk_popover_new(dl);downloads_box=gtk_box_new(GTK_ORIENTATION_VERTICAL,6);gtk_container_set_border_width(GTK_CONTAINER(downloads_box),10);gtk_container_add(GTK_CONTAINER(downloads_pop),downloads_box);GtkWidget *u=gtk_button_new_with_label("Actualizar listas");gtk_box_pack_start(GTK_BOX(downloads_box),u,FALSE,FALSE,0);g_signal_connect(u,"clicked",G_CALLBACK(manual_update),NULL);gtk_widget_show_all(downloads_box);gtk_menu_button_set_popover(GTK_MENU_BUTTON(dl),downloads_pop);
     button("+",G_CALLBACK(add_tab),NULL);notebook=gtk_notebook_new();gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook),TRUE);gtk_box_pack_start(GTK_BOX(root),notebook,TRUE,TRUE,0);
-    g_signal_connect(notebook,"switch-page",G_CALLBACK(switch_page),NULL);g_signal_connect(window,"destroy",G_CALLBACK(gtk_main_quit),NULL);g_signal_connect(window,"key-press-event",G_CALLBACK(key_press),NULL);g_signal_connect(window,"map-event",G_CALLBACK(mapped),NULL);g_signal_connect(window,"draw",G_CALLBACK(drawn),NULL);
+    g_signal_connect_after(notebook,"switch-page",G_CALLBACK(switch_page),NULL);g_signal_connect(window,"destroy",G_CALLBACK(gtk_main_quit),NULL);g_signal_connect(window,"key-press-event",G_CALLBACK(key_press),NULL);g_signal_connect(window,"map-event",G_CALLBACK(mapped),NULL);g_signal_connect(window,"draw",G_CALLBACK(drawn),NULL);
     if(argc<2)new_tab("about:blank",TRUE);else for(int i=1;i<argc;i++)new_tab(argv[i],TRUE);
     gtk_widget_show_all(window);refresh_controls();
     char *version=g_strdup_printf("WebKitGTK %u.%u.%u; sandbox=%d",webkit_get_major_version(),webkit_get_minor_version(),webkit_get_micro_version(),webkit_web_context_get_sandbox_enabled(context));log_event("runtime",version);g_free(version);
-    if(!no_update)g_timeout_add_seconds(30,update_lists,NULL);
+    if(!no_update){g_timeout_add_seconds(30,update_lists,NULL);g_timeout_add_seconds(3600,update_tick,NULL);}
     if(quit_after>0)g_timeout_add_seconds(quit_after,quit_timer,NULL);
     if(opt_eval)g_timeout_add_seconds(MAX(1,eval_after),eval_timer,NULL);
     if(probe_interval>0)g_timeout_add_seconds(probe_interval,probe,NULL);

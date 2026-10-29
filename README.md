@@ -66,8 +66,10 @@ y la evidencia de pruebas para el alcance comprobado.
 ## Construir en Debian 13
 
 ```sh
-sudo apt install build-essential pkg-config cargo rustc libwebkit2gtk-4.1-dev \
+sudo apt install build-essential pkg-config libwebkit2gtk-4.1-dev \
   libgtk-3-dev libjson-glib-dev python3 nodejs ca-certificates
+# Con trixie-backports configurado (Rust >= 1.88):
+sudo apt install -t trixie-backports cargo rustc
 make -j2
 make resources
 make test

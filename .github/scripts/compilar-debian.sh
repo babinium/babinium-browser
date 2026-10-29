@@ -22,3 +22,4 @@ readelf --version-info build/lib/babinium-browser/libbabinium-adblock.so >> arti
 timeout 35s xvfb-run -a dbus-run-session -- build/bin/babinium-browser --profile /tmp/bb-smoke --no-update --telemetry artifacts/smoke.jsonl --quit-after 5 about:blank
 grep -q 'ui_first_draw' artifacts/smoke.jsonl
 grep -q '\\"engine\\":true' artifacts/smoke.jsonl
+timeout 55s xvfb-run -a dbus-run-session -- python3 tests/integration.py build/bin/babinium-browser build/bin/babinium-filter artifacts/integration

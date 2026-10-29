@@ -1,0 +1,10 @@
+! Deterministic browser integration test. Never installed as a production list.
+/blocked-ad.js$script,domain=127.0.0.1
+/allowed-ad.js$script,domain=127.0.0.1
+@@/allowed-ad.js$script,domain=127.0.0.1
+127.0.0.1##.bb-specific
+##.bb-generic
+##.bb-except
+127.0.0.1#@#.bb-except
+127.0.0.1###bb-procedural:has-text(Sponsored):remove()
+127.0.0.1##+js(set-constant, fixtureConstant, true)
