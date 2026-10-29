@@ -99,12 +99,13 @@ static Tab *new_tab(const char *uri,gboolean select){
     WebKitSettings *s=webkit_web_view_get_settings(WEBKIT_WEB_VIEW(t->view));
     webkit_settings_set_enable_developer_extras(s,audit);
     webkit_settings_set_media_playback_requires_user_gesture(s,!autoplay);
+    if(autoplay)webkit_web_view_set_is_muted(WEBKIT_WEB_VIEW(t->view),TRUE);
     webkit_settings_set_enable_page_cache(s,FALSE); /* Avoid retained back/forward DOMs. */
     webkit_settings_set_enable_dns_prefetching(s,FALSE);
     webkit_settings_set_javascript_can_open_windows_automatically(s,FALSE);
     gtk_box_pack_start(GTK_BOX(t->box),t->view,TRUE,TRUE,0);
     GtkWidget *header=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,3);t->label=gtk_label_new("Nueva pestaña");
-    gtk_label_set_ellipsize(GTK_LABEL(t->label),PANGO_ELLIPSIZE_END);gtk_label_set_max_width_chars(GTK_LABEL(t->label),24);
+    gtk_label_set_ellipsize(GTK_LABEL(t->label),PANGO_ELLIPSIZE_END);gtk_label_set_width_chars(GTK_LABEL(t->label),18);gtk_label_set_max_width_chars(GTK_LABEL(t->label),24);
     GtkWidget *close=gtk_button_new_with_label("×");gtk_button_set_relief(GTK_BUTTON(close),GTK_RELIEF_NONE);
     gtk_box_pack_start(GTK_BOX(header),t->label,TRUE,TRUE,0);gtk_box_pack_start(GTK_BOX(header),close,FALSE,FALSE,0);gtk_widget_show_all(header);
     g_object_set_data(G_OBJECT(t->box),"tab",t);g_ptr_array_add(tabs,t);

@@ -3,8 +3,8 @@ set -euo pipefail
 make build/bin/babinium-browser
 make -j2
 make resources
-make test
 make package
+make test
 mkdir -p artifacts/bundle
 cp -r build/bin build/lib build/share artifacts/bundle/
 cp blocker/Cargo.lock artifacts/Cargo.lock
@@ -24,3 +24,4 @@ timeout 35s xvfb-run -a dbus-run-session -- build/bin/babinium-browser --profile
 grep -q 'ui_first_draw' artifacts/smoke.jsonl
 grep -q '\\"engine\\":true' artifacts/smoke.jsonl
 timeout 55s xvfb-run -a dbus-run-session -- python3 tests/integration.py build/bin/babinium-browser build/bin/babinium-filter artifacts/integration
+timeout 45s xvfb-run -a dbus-run-session -- python3 tests/ui-smoke.py build/bin/babinium-browser artifacts/ui

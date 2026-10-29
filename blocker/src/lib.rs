@@ -87,7 +87,7 @@ mod tests {
     use std::collections::HashSet;
     fn engine() -> Engine {
         let mut s = FilterSet::new(false);
-        s.add_filters(["||ads.example^", "@@||ads.example/allowed.js", "example.org##.sponsor", "##.generic-ad", "example.org#@#.generic-ad"], Default::default());
+        s.add_filter_list(["||ads.example^", "@@||ads.example/allowed.js", "example.org##.sponsor", "##.generic-ad", "example.org#@#.generic-ad"].join("\n"), Default::default());
         Engine::new_with_filter_set(s)
     }
     #[test] fn network_and_exception() {
@@ -107,7 +107,7 @@ mod tests {
     }
     #[test] fn procedural_operator_is_not_treated_as_css() {
         let mut s=FilterSet::new(false);
-        s.add_filters(["example.org###ad:has-text(Sponsored):remove()"],Default::default());
+        s.add_filter_list("example.org###ad:has-text(Sponsored):remove()".into(),Default::default());
         let e=Engine::new_with_filter_set(s);let r=e.url_cosmetic_resources("https://example.org/");
         assert!(r.procedural_actions.iter().any(|v|v.contains("\"type\":\"has-text\"")));
     }
