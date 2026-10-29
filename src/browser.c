@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-typedef struct Tab { GtkWidget *view,*label,*box,*placeholder; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
+typedef struct Tab { GtkWidget *view,*label,*box,*placeholder,*help; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
 static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*dark_button,*favorite_button,*favorites_box,*favorites_pop,*downloads_box,*downloads_pop,*list_status;
 static WebKitWebContext *context;
 static WebKitUserContentManager *content;
@@ -62,7 +62,7 @@ static void refresh_controls(void) {
         if(!gtk_widget_has_focus(address))gtk_entry_set_text(GTK_ENTRY(address),"");
         gtk_widget_set_sensitive(back,FALSE);gtk_widget_set_sensitive(forward,FALSE);gtk_widget_set_sensitive(reload_btn,FALSE);gtk_widget_set_sensitive(shield,FALSE);
         setting_shield=TRUE;gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(shield),!no_block);setting_shield=FALSE;
-        gtk_button_set_label(GTK_BUTTON(shield),no_block?"Sin bloqueo":"Bloqueo activado");gtk_window_set_title(GTK_WINDOW(window),"Nueva pestaña — Babinium");return;
+        gtk_button_set_label(GTK_BUTTON(shield),no_block?"Sin bloqueo":"Bloqueo activado");gtk_window_set_title(GTK_WINDOW(window),t->help?"Ayuda de Babinium":"Nueva pestaña — Babinium");return;
     }
     gtk_widget_set_sensitive(reload_btn,TRUE);gtk_widget_set_sensitive(shield,!no_block);
     WebKitWebView *v=WEBKIT_WEB_VIEW(t->view);
@@ -126,6 +126,7 @@ static void terminated(WebKitWebView *v,WebKitWebProcessTerminationReason reason
 static void attach_view(Tab *t,WebKitWebView *related){
     ensure_context();
     if(t->placeholder){gtk_widget_destroy(t->placeholder);t->placeholder=NULL;}
+    if(t->help){gtk_widget_destroy(t->help);t->help=NULL;}
     t->view=related?webkit_web_view_new_with_related_view(related):GTK_WIDGET(g_object_new(WEBKIT_TYPE_WEB_VIEW,"web-context",context,"user-content-manager",content,NULL));
     GdkRGBA black={0,0,0,1};webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(t->view),&black);
     WebKitSettings *s=webkit_web_view_get_settings(WEBKIT_WEB_VIEW(t->view));
@@ -165,6 +166,37 @@ static Tab *new_tab(const char *uri,gboolean select){
 static void switch_page(GtkNotebook *n,GtkWidget *page,guint num,gpointer unused){(void)n;(void)page;(void)num;(void)unused;Tab *t=current();const char *uri=t&&t->view?webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)):NULL;gtk_entry_set_text(GTK_ENTRY(address),uri?uri:"");refresh_controls();}
 static void navigate(GtkButton *b,gpointer which){(void)b;Tab *t=current();if(!t||!t->view)return;WebKitWebView *v=WEBKIT_WEB_VIEW(t->view);switch(GPOINTER_TO_INT(which)){case 0:webkit_web_view_go_back(v);break;case 1:webkit_web_view_go_forward(v);break;default:if(webkit_web_view_is_loading(v))webkit_web_view_stop_loading(v);else webkit_web_view_reload(v);}}
 static void add_tab(GtkButton *b,gpointer unused){(void)b;(void)unused;new_tab("about:blank",TRUE);gtk_entry_set_text(GTK_ENTRY(address),"");gtk_widget_grab_focus(address);}
+static void open_help(GtkButton *button,gpointer unused){
+    (void)button;(void)unused;
+    Tab *t=new_tab(NULL,TRUE);if(t->placeholder){gtk_widget_destroy(t->placeholder);t->placeholder=NULL;}
+    t->help=gtk_scrolled_window_new(NULL,NULL);gtk_widget_set_name(t->help,"bb-help");
+    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(t->help),GTK_POLICY_NEVER,GTK_POLICY_AUTOMATIC);
+    GtkWidget *body=gtk_box_new(GTK_ORIENTATION_VERTICAL,16);gtk_container_set_border_width(GTK_CONTAINER(body),28);
+    gtk_widget_set_halign(body,GTK_ALIGN_CENTER);gtk_widget_set_valign(body,GTK_ALIGN_START);
+    GtkWidget *heading=gtk_label_new(NULL);gtk_label_set_markup(GTK_LABEL(heading),"<span size='xx-large' weight='bold'>Babinium</span>");
+    gtk_label_set_xalign(GTK_LABEL(heading),0);gtk_box_pack_start(GTK_BOX(body),heading,FALSE,FALSE,0);
+    GtkWidget *subtitle=gtk_label_new(NULL);gtk_label_set_markup(GTK_LABEL(subtitle),"<span size='large' weight='bold'>Controles de velocidad</span>");
+    gtk_label_set_xalign(GTK_LABEL(subtitle),0);gtk_box_pack_start(GTK_BOX(body),subtitle,FALSE,FALSE,0);
+    GtkWidget *grid=gtk_grid_new();gtk_grid_set_column_spacing(GTK_GRID(grid),24);gtk_grid_set_row_spacing(GTK_GRID(grid),10);
+    static const char *rows[][2]={
+        {"S / D","Reducir / aumentar la velocidad en 0,1×"},
+        {"R","Volver a la velocidad normal (1×)"},
+        {"G","Alternar entre 1,8× y la velocidad anterior"},
+        {"Z / X","Retroceder / avanzar 10 segundos"},
+        {"M / J","Guardar una marca / volver a ella"},
+        {"V","Mostrar o esconder el indicador de velocidad"}
+    };
+    for(guint i=0;i<G_N_ELEMENTS(rows);i++){
+        GtkWidget *key=gtk_label_new(rows[i][0]),*description=gtk_label_new(rows[i][1]);
+        gtk_widget_set_name(key,"bb-help-key");gtk_label_set_xalign(GTK_LABEL(key),0);gtk_label_set_xalign(GTK_LABEL(description),0);
+        gtk_label_set_line_wrap(GTK_LABEL(description),TRUE);gtk_grid_attach(GTK_GRID(grid),key,0,i,1,1);gtk_grid_attach(GTK_GRID(grid),description,1,i,1,1);
+    }
+    gtk_box_pack_start(GTK_BOX(body),grid,FALSE,FALSE,0);
+    GtkWidget *note=gtk_label_new("Los atajos controlan el video o audio activo y no se aplican mientras escribís.\nSi el reproductor está incrustado, hacé clic en él para darle el foco.\nAlgunos reproductores o contenidos pueden limitar la velocidad.");
+    gtk_label_set_line_wrap(GTK_LABEL(note),TRUE);gtk_label_set_xalign(GTK_LABEL(note),0);gtk_box_pack_start(GTK_BOX(body),note,FALSE,FALSE,0);
+    gtk_container_add(GTK_CONTAINER(t->help),body);gtk_box_pack_start(GTK_BOX(t->box),t->help,TRUE,TRUE,0);
+    gtk_label_set_text(GTK_LABEL(t->label),"Ayuda de Babinium");gtk_widget_show_all(t->help);refresh_controls();
+}
 static void toggle_block(GtkToggleButton *button,gpointer unused){
     (void)unused;if(setting_shield)return;Tab *t=current();if(!t||!t->view)return;char *h=host_of(webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)));
     if(!*h){g_free(h);refresh_controls();return;}
@@ -275,11 +307,12 @@ static gboolean screenshot(gpointer unused){(void)unused;GdkWindow *gw=gtk_widge
 static GtkWidget *button(const char *label,GCallback cb,gpointer data){GtkWidget *b=gtk_button_new_with_label(label);g_signal_connect(b,"clicked",cb,data);gtk_box_pack_start(GTK_BOX(toolbar),b,FALSE,FALSE,0);return b;}
 static void install_scripts(void){
     if(!content)return;
-    static char *dark_js,*youtube_js,*ambient_js;
+    static char *dark_js,*youtube_js,*ambient_js,*speed_js;
     static const char *youtube_uris[]={"http://youtube.com/*","https://youtube.com/*","http://*.youtube.com/*","https://*.youtube.com/*",NULL};
     if(!dark_js){char *path=g_build_filename(data_dir,"darkreader.js",NULL);if(!g_file_get_contents(path,&dark_js,NULL,NULL))g_warning("Falta Dark Reader: %s",path);g_free(path);}
     if(!youtube_js){char *path=g_build_filename(data_dir,"youtube.js",NULL);if(!g_file_get_contents(path,&youtube_js,NULL,NULL))g_warning("Falta la preferencia de YouTube: %s",path);g_free(path);}
     if(!ambient_js){char *path=g_build_filename(data_dir,"youtube-ambient.js",NULL);if(!g_file_get_contents(path,&ambient_js,NULL,NULL))g_warning("Falta la preferencia de modo ambiente: %s",path);g_free(path);}
+    if(!speed_js){char *path=g_build_filename(data_dir,"video-speed.js",NULL);if(!g_file_get_contents(path,&speed_js,NULL,NULL))g_warning("Falta el control de velocidad: %s",path);g_free(path);}
     webkit_user_content_manager_remove_all_scripts(content);
     if(dark_js){
         JsonBuilder *b=json_builder_new();json_builder_begin_array(b);GHashTableIter it;gpointer key;g_hash_table_iter_init(&it,light_sites);while(g_hash_table_iter_next(&it,&key,NULL))json_builder_add_string_value(b,key);json_builder_end_array(b);
@@ -290,6 +323,7 @@ static void install_scripts(void){
     }
     if(youtube_js){WebKitUserScript *u=webkit_user_script_new(youtube_js,WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,youtube_uris,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
     if(ambient_js){WebKitUserScript *u=webkit_user_script_new(ambient_js,WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,youtube_uris,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
+    if(speed_js){WebKitUserScript *u=webkit_user_script_new_for_world(speed_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,"babinium-speed",NULL,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
 }
 static void extension_data(WebKitWebContext *ctx){
     char *res=g_build_filename(data_dir,"resources.json",NULL),*js=g_build_filename(data_dir,"cosmetic.js",NULL),*sites=sites_text();
@@ -323,7 +357,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.3.1");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.0");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);
@@ -337,7 +371,7 @@ int main(int argc,char **argv){
     char *respath=g_build_filename(data_dir,"resources.json",NULL);
     if(!no_block&&(!g_file_test(index_path,G_FILE_TEST_IS_REGULAR)||!g_file_test(respath,G_FILE_TEST_IS_REGULAR))){g_printerr("Faltan los datos de bloqueo en %s\n",data_dir);return 2;}g_free(respath);
     g_object_set(gtk_settings_get_default(),"gtk-application-prefer-dark-theme",TRUE,NULL);
-    GtkCssProvider *css=gtk_css_provider_new();gtk_css_provider_load_from_data(css,"#bb-empty-tab { background-color: #000000; color: #dddddd; } #bb-brand { padding: 0 12px; font-weight: bold; }",-1,NULL);gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),GTK_STYLE_PROVIDER(css),GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);g_object_unref(css);
+    GtkCssProvider *css=gtk_css_provider_new();gtk_css_provider_load_from_data(css,"#bb-empty-tab { background-color: #000000; color: #dddddd; } #bb-brand { padding: 0 12px; font-weight: bold; background: none; border: 0; box-shadow: none; } #bb-help, #bb-help viewport { background-color: #0d0f13; color: #eeeeee; } #bb-help-key { font-weight: bold; color: #86b7ff; }",-1,NULL);gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),GTK_STYLE_PROVIDER(css),GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);g_object_unref(css);
     tabs=g_ptr_array_new();window=gtk_window_new(GTK_WINDOW_TOPLEVEL);gtk_window_set_default_size(GTK_WINDOW(window),1100,740);gtk_window_set_title(GTK_WINDOW(window),"Babinium Browser");gtk_window_set_wmclass(GTK_WINDOW(window),"babinium-browser","BabiniumBrowser");
     root=gtk_box_new(GTK_ORIENTATION_VERTICAL,0);gtk_container_add(GTK_CONTAINER(window),root);toolbar=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,3);gtk_container_set_border_width(GTK_CONTAINER(toolbar),4);gtk_box_pack_start(GTK_BOX(root),toolbar,FALSE,FALSE,0);
     back=button("Atrás",G_CALLBACK(navigate),GINT_TO_POINTER(0));forward=button("Adelante",G_CALLBACK(navigate),GINT_TO_POINTER(1));reload_btn=button("Recargar",G_CALLBACK(navigate),GINT_TO_POINTER(2));
@@ -349,7 +383,7 @@ int main(int argc,char **argv){
     shield=gtk_toggle_button_new_with_label("Bloqueo");gtk_box_pack_start(GTK_BOX(toolbar),shield,FALSE,FALSE,0);g_signal_connect(shield,"toggled",G_CALLBACK(toggle_block),NULL);
     dark_button=gtk_toggle_button_new_with_label("Oscuro");gtk_widget_set_tooltip_text(dark_button,"Activar o desactivar el modo oscuro para este sitio. Se recarga la pestaña.");gtk_box_pack_start(GTK_BOX(toolbar),dark_button,FALSE,FALSE,0);g_signal_connect(dark_button,"toggled",G_CALLBACK(toggle_dark),NULL);
     GtkWidget *dl=gtk_menu_button_new();gtk_button_set_label(GTK_BUTTON(dl),"Descargas");gtk_box_pack_start(GTK_BOX(toolbar),dl,FALSE,FALSE,0);downloads_pop=gtk_popover_new(dl);downloads_box=gtk_box_new(GTK_ORIENTATION_VERTICAL,6);gtk_container_set_border_width(GTK_CONTAINER(downloads_box),10);gtk_container_add(GTK_CONTAINER(downloads_pop),downloads_box);list_status=gtk_label_new(no_update?"Listas incluidas · actualización desactivada en esta prueba":"Listas incluidas · actualización automática cada 6 h");gtk_label_set_line_wrap(GTK_LABEL(list_status),TRUE);gtk_box_pack_start(GTK_BOX(downloads_box),list_status,FALSE,FALSE,0);GtkWidget *u=gtk_button_new_with_label("Actualizar listas");gtk_box_pack_start(GTK_BOX(downloads_box),u,FALSE,FALSE,0);g_signal_connect(u,"clicked",G_CALLBACK(manual_update),NULL);gtk_widget_show_all(downloads_box);gtk_menu_button_set_popover(GTK_MENU_BUTTON(dl),downloads_pop);
-    button("+",G_CALLBACK(add_tab),NULL);notebook=gtk_notebook_new();gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook),TRUE);GtkWidget *brand=gtk_label_new("Babinium");gtk_widget_set_name(brand,"bb-brand");gtk_widget_show(brand);gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook),brand,GTK_PACK_END);gtk_box_pack_start(GTK_BOX(root),notebook,TRUE,TRUE,0);
+    button("+",G_CALLBACK(add_tab),NULL);notebook=gtk_notebook_new();gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook),TRUE);GtkWidget *brand=gtk_button_new_with_label("Babinium");gtk_widget_set_name(brand,"bb-brand");gtk_widget_set_tooltip_text(brand,"Abrir ayuda de Babinium");g_signal_connect(brand,"clicked",G_CALLBACK(open_help),NULL);gtk_widget_show(brand);gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook),brand,GTK_PACK_END);gtk_box_pack_start(GTK_BOX(root),notebook,TRUE,TRUE,0);
     g_signal_connect_after(notebook,"switch-page",G_CALLBACK(switch_page),NULL);g_signal_connect(window,"destroy",G_CALLBACK(gtk_main_quit),NULL);g_signal_connect(window,"key-press-event",G_CALLBACK(key_press),NULL);g_signal_connect(window,"map-event",G_CALLBACK(mapped),NULL);g_signal_connect(window,"draw",G_CALLBACK(drawn),NULL);
     if(argc<2)new_tab("about:blank",TRUE);else for(int i=1;i<argc;i++)new_tab(argv[i],TRUE);
     gtk_widget_show_all(window);refresh_controls();

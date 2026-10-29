@@ -18,6 +18,8 @@ pedidos y los puntos que todavía requieren pruebas.
 - Pestañas vacías negras y «Babinium» en el extremo derecho de la barra.
 - Favoritos en el perfil, con estrella y panel; cookies y datos de sitios
   persistentes entre reinicios.
+- Control integrado de velocidad para medios HTML5, con indicador y atajos de
+  Video Speed Controller. Al pulsar «Babinium» se abre una pestaña de ayuda GTK.
 - Modo oscuro predeterminado con la API local de Dark Reader; el botón Oscuro
   permite excluir un sitio. YouTube usa su propio tema oscuro cuando está
   disponible. Cuando el fondo y varios puntos visibles ya son oscuros se evita
@@ -40,7 +42,7 @@ instalar. Para el bundle se necesitan las dependencias de ejecución del paquete
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.3.1_amd64.deb
+sudo apt install ./babinium-browser_0.4.0_amd64.deb
 ```
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
@@ -56,6 +58,14 @@ del mismo hostname aplican la decisión de red inmediatamente y necesitan recarg
 para retirar los scriptlets ya ejecutados.
 El contador muestra solicitudes bloqueadas acumuladas en la pestaña, incluyendo
 seguimiento; no es un contador de anuncios de vídeo.
+
+Con un video o audio presente: S/D disminuyen/aumentan 0,1×; R vuelve a 1×;
+G alterna entre 1,8× y la velocidad anterior; Z/X retroceden/avanzan 10 s;
+M guarda una marca, J vuelve a ella y V fija u oculta el indicador. El indicador
+también ofrece botones −/+. Los atajos no se activan mientras se escribe ni con
+Ctrl, Alt, Super o Mayúsculas. Para medios en un iframe de otro origen, hacé
+clic en el reproductor para enfocarlo. Algunos reproductores, medios protegidos,
+elementos en componentes cerrados o transmisiones pueden limitar estos controles.
 
 YouTube recibe una preferencia inicial de 360p mediante un método interno del
 reproductor, que YouTube puede cambiar o ignorar. El usuario puede elegir otra
