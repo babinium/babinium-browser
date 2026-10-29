@@ -1,7 +1,45 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Small C ABI. Each engine is confined to its WebKit web-process main thread.
 use adblock::{Engine, FilterSet, lists::ParseOptions, resources::{Resource, PermissionMask}, request::Request};
-use std::{ffi::{CStr, CString, c_char}, fs, path::Path};
+use std::{cell::RefCell, collections::{HashSet, VecDeque}, ffi::{CStr, CString, c_char}, fs, path::Path};
+
+// An engine is confined to its WebKit web-process main thread. Keep only the
+// small per-URL state needed for generic selectors, not the larger generated
+// stylesheet/scriptlets. Reloading or freeing an engine clears these entries.
+const SITE_CACHE_LIMIT: usize = 8;
+struct SiteCache {
+    engine: usize,
+    url: String,
+    generichide: bool,
+    exceptions: HashSet<String>,
+}
+thread_local! {
+    static SITES: RefCell<VecDeque<SiteCache>> = const { RefCell::new(VecDeque::new()) };
+}
+fn clear_sites() { SITES.with(|sites| sites.borrow_mut().clear()); }
+fn remember_site(engine: usize, url: &str, generichide: bool, exceptions: HashSet<String>) {
+    SITES.with(|sites| {
+        let mut sites=sites.borrow_mut();
+        if let Some(i)=sites.iter().position(|s| s.engine==engine && s.url==url) { sites.remove(i); }
+        sites.push_front(SiteCache { engine, url:url.to_owned(), generichide, exceptions });
+        if sites.len()>SITE_CACHE_LIMIT { sites.pop_back(); }
+    });
+}
+fn generic_selectors(engine: &Engine, url: &str, classes: Vec<String>, ids: Vec<String>) -> Vec<String> {
+    let key=engine as *const Engine as usize;
+    SITES.with(|sites| {
+        let mut sites=sites.borrow_mut();
+        if let Some(i)=sites.iter().position(|s| s.engine==key && s.url==url) {
+            let site=sites.remove(i).unwrap();sites.push_front(site);
+        } else {
+            let r=engine.url_cosmetic_resources(url);
+            sites.push_front(SiteCache { engine:key,url:url.to_owned(),generichide:r.generichide,exceptions:r.exceptions });
+            if sites.len()>SITE_CACHE_LIMIT { sites.pop_back(); }
+        }
+        let site=sites.front().unwrap();
+        if site.generichide { Vec::new() } else { engine.hidden_class_id_selectors(classes,ids,&site.exceptions) }
+    })
+}
 
 pub fn load(index: &Path, resources: &Path) -> Result<Engine, String> {
     let mut engine = Engine::default();
@@ -35,12 +73,12 @@ fn returned(s: String) -> *mut c_char { CString::new(s).map_or(std::ptr::null_mu
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn bb_engine_load(index: *const c_char, resources: *const c_char) -> *mut Engine {
     match load(Path::new(unsafe { string(index) }), Path::new(unsafe { string(resources) })) {
-        Ok(e) => Box::into_raw(Box::new(e)),
+        Ok(e) => { clear_sites();Box::into_raw(Box::new(e)) },
         Err(e) => { eprintln!("babinium: filter engine: {e}"); std::ptr::null_mut() }
     }
 }
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn bb_engine_free(p: *mut Engine) { if !p.is_null() { drop(unsafe { Box::from_raw(p) }); } }
+pub unsafe extern "C" fn bb_engine_free(p: *mut Engine) { if !p.is_null() { clear_sites();drop(unsafe { Box::from_raw(p) }); } }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn bb_string_free(p: *mut c_char) { if !p.is_null() { drop(unsafe { CString::from_raw(p) }); } }
 
@@ -67,24 +105,23 @@ pub unsafe extern "C" fn bb_check(p: *const Engine, url: *const c_char, source: 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn bb_cosmetics(p: *const Engine, url: *const c_char) -> *mut c_char {
     if p.is_null() { return returned("{}".into()); }
-    returned(serde_json::to_string(&unsafe { &*p }.url_cosmetic_resources(unsafe { string(url) })).unwrap())
+    let e=unsafe { &*p };let url=unsafe { string(url) };let r=e.url_cosmetic_resources(url);
+    let json=serde_json::to_string(&r).unwrap();
+    remember_site(p as usize,url,r.generichide,r.exceptions);
+    returned(json)
 }
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn bb_generic(p: *const Engine, url: *const c_char, classes: *const c_char, ids: *const c_char) -> *mut c_char {
     if p.is_null() { return returned("[]".into()); }
-    let e = unsafe { &*p };
-    let r = e.url_cosmetic_resources(unsafe { string(url) });
-    if r.generichide { return returned("[]".into()); }
     let c: Vec<String> = serde_json::from_str(unsafe { string(classes) }).unwrap_or_default();
     let i: Vec<String> = serde_json::from_str(unsafe { string(ids) }).unwrap_or_default();
     if c.len() + i.len() > 4096 { return returned("[]".into()); }
-    returned(serde_json::to_string(&e.hidden_class_id_selectors(c, i, &r.exceptions)).unwrap())
+    returned(serde_json::to_string(&generic_selectors(unsafe { &*p },unsafe { string(url) },c,i)).unwrap())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashSet;
     fn engine() -> Engine {
         let mut s = FilterSet::new(false);
         s.add_filter_list(["||ads.example^", "@@||ads.example/allowed.js", "example.org##.sponsor", "##.generic-ad", "example.org#@#.generic-ad"].join("\n"), Default::default());
@@ -110,5 +147,33 @@ mod tests {
         s.add_filter_list("example.org###ad:has-text(Sponsored):remove()".into(),Default::default());
         let e=Engine::new_with_filter_set(s);let r=e.url_cosmetic_resources("https://example.org/");
         assert!(r.procedural_actions.iter().any(|v|v.contains("\"type\":\"has-text\"")));
+    }
+    #[test] fn cached_generic_respects_exceptions_and_engine_lifetime() {
+        clear_sites();
+        let e=engine();
+        let classes=vec!["generic-ad".to_string()];
+        for _ in 0..3 {
+            assert!(generic_selectors(&e,"https://example.org/",classes.clone(),vec![]).is_empty());
+            assert_eq!(generic_selectors(&e,"https://other.test/",classes.clone(),vec![]),vec![".generic-ad"]);
+        }
+        let mut set=FilterSet::new(false);set.add_filter_list("##.generic-ad".into(),Default::default());
+        let other=Engine::new_with_filter_set(set);
+        assert_eq!(generic_selectors(&other,"https://example.org/",classes.clone(),vec![]),vec![".generic-ad"]);
+        for n in 0..12 { let url=format!("https://{n}.test/");generic_selectors(&other,&url,classes.clone(),vec![]); }
+        SITES.with(|sites| assert!(sites.borrow().len()<=SITE_CACHE_LIMIT));
+        let owned=Box::into_raw(Box::new(engine()));
+        generic_selectors(unsafe { &*owned },"https://example.org/",classes,vec![]);
+        unsafe { bb_engine_free(owned) };
+        SITES.with(|sites| assert!(sites.borrow().is_empty()));
+    }
+    #[test] fn cached_generic_obeys_generichide_per_site() {
+        clear_sites();
+        let mut set=FilterSet::new(false);
+        set.add_filter_list("##.generic-ad\n@@||example.org^$generichide".into(),Default::default());
+        let e=Engine::new_with_filter_set(set);let classes=vec!["generic-ad".to_string()];
+        for _ in 0..3 {
+            assert!(generic_selectors(&e,"https://example.org/",classes.clone(),vec![]).is_empty());
+            assert_eq!(generic_selectors(&e,"https://other.test/",classes.clone(),vec![]),vec![".generic-ad"]);
+        }
     }
 }

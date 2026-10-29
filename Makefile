@@ -30,12 +30,12 @@ build/bin/babinium-filter-update: scripts/filter-update.py
 resources: all
 	python3 scripts/prepare-resources.py
 	python3 scripts/license-notices.py
-	cp data/cosmetic.js data/youtube.js data/sources.json data/upstream.json build/share/babinium-browser/
+	cp data/cosmetic.js data/youtube.js data/youtube-ambient.js data/sources.json data/upstream.json build/share/babinium-browser/
 
 test: all
 	cd blocker && cargo test --release --locked
 	python3 -m unittest discover -s tests -p 'test_*.py' -v
-	node --test tests/test-youtube.js
+	node --test tests/test-youtube.js tests/test-ambient.js
 
 package:
 	bash packaging/package.sh

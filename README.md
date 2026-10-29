@@ -39,7 +39,7 @@ instalar. Para el bundle se necesitan las dependencias de ejecución del paquete
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.2.0_amd64.deb
+sudo apt install ./babinium-browser_0.3.0_amd64.deb
 ```
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
@@ -65,7 +65,12 @@ respuesta útil, mantiene la elección normal del motor.
 Si un vídeo no ofrece H.264 o falla el elemento de vídeo, reintenta una vez con
 la negociación normal. WebKit/GStreamer pueden utilizar decodificación por
 hardware si está configurada, pero las capacidades informadas no garantizan un
-menor consumo. La persistencia del perfil no garantiza que Google acepte iniciar
+menor consumo. Para reducir el trabajo del compositor, en la primera reproducción
+se intenta desactivar la iluminación cinemática mediante el propio ajuste de
+YouTube. Se reconoce el menú en inglés y español: si el menú cambia o usa otro
+idioma, se deja intacto. Después se respeta la elección manual del usuario,
+incluso tras reiniciar; YouTube podría cambiar su interfaz interna. La persistencia
+del perfil no garantiza que Google acepte iniciar
 sesión en todos los navegadores integrados.
 
 ## Arquitectura y límites
@@ -77,7 +82,10 @@ sólo al navegar. Abrir pestañas vacías no inicia procesos web ni carga el ín
 Se carga un índice serializado; no se parsean listas al arrancar la interfaz.
 Los scriptlets se inyectan al crear el contexto JavaScript antes de los scripts
 del sitio; la consulta cosmética nativa está en un mundo aislado. Los cambios del
-DOM se agrupan, sin sondeo permanente. La política de caché reduce retención a
+DOM se agrupan, sin sondeo permanente. El filtrado cosmético conserva un máximo
+de ocho conjuntos pequeños de excepciones por URL para evitar volver a calcular
+los recursos completos al aparecer clases nuevas; se limpia al cambiar el motor.
+La política de caché reduce retención a
 cambio de volver a cargar páginas al retroceder; no se desactivan JIT ni sandbox.
 
 `WebPage::send-request` permite cancelar y cambiar URLs, pero la API pública no

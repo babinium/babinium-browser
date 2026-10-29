@@ -70,7 +70,7 @@ def main():
                         p=proc[pid];key=(pid,p['start']);known.add(key);cpu_seen[key]=max(cpu_seen.get(key,0),p['cpu'])
                         rss,pss,swap,ok=memory(pid)
                         details.append({'pid':pid,'name':p['name'],'rss_kib':rss,'pss_kib':pss,'swap_pss_kib':swap,'pss_readable':ok})
-                    s={'seconds':now-start,'rss_kib':sum(p['rss_kib'] for p in details),'pss_kib':sum(p['pss_kib'] for p in details),'swap_pss_kib':sum(p['swap_pss_kib'] for p in details),'pss_complete':all(p['pss_readable'] for p in details),'processes':details,'cpu_seconds':sum(cpu_seen.values())}
+                    s={'seconds':now-start,'monotonic_seconds':now,'rss_kib':sum(p['rss_kib'] for p in details),'pss_kib':sum(p['pss_kib'] for p in details),'swap_pss_kib':sum(p['swap_pss_kib'] for p in details),'pss_complete':all(p['pss_readable'] for p in details),'processes':details,'cpu_seconds':sum(cpu_seen.values())}
                     samples.append(s);log.write(json.dumps(s)+'\n');log.flush()
                     if child.poll() is not None:break
                     time.sleep(max(0,args.interval-(time.monotonic()-now)))

@@ -16,6 +16,9 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
   conservar el método y las condiciones de las pruebas.
 - [x] Repetir las mediciones con las nuevas funciones y con YouTube real; el
   informe identifica qué binario y condiciones se usaron para cada muestra.
+- [x] Seguir mejorando la rapidez y la fluidez, y buscar menor CPU y RAM sin
+  quitar el bloqueo ni las funciones pedidas; medir cada mejora y señalar
+  expresamente cuando una reducción de memoria no esté demostrada.
 - [ ] Antes de una versión estable, revisar y quitar del producto las opciones
   de instrumentación que no sean fundamentales; mantener las pruebas externas.
 - [x] Evitar afirmaciones de ser el navegador más liviano sin una comparación
@@ -35,6 +38,10 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
   conservar la reproducción y permitir que el usuario cambie la calidad. La
   preferencia de resolución usa un método interno que YouTube puede cambiar; la
   selección de códec es tentativa y no se demostró una mejora general de CPU.
+- [x] Intentar desactivar inicialmente la iluminación cinemática de YouTube
+  para reducir el trabajo gráfico, manteniendo el ajuste manual y su persistencia.
+  Los menús reconocidos son inglés y español; si YouTube cambia la interfaz o
+  usa otro idioma, se mantiene su comportamiento normal.
 
 ## Interfaz y datos
 
