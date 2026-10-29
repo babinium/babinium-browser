@@ -8,8 +8,16 @@
 
     function state(media){
         let s=states.get(media);
-        if(!s){s={previousFast:null,mark:null,beforeJump:null,pendingRate:null,pendingAt:0,retries:0};states.set(media,s);}
+        if(!s){s={previousFast:null,mark:null,beforeJump:null,pendingRate:null,pendingAt:0,
+            desiredRate:null,watching:false,retries:0,retrySince:0};states.set(media,s);}
         return s;
+    }
+    function watchRate(media,s){
+        if(!s.watching){media.addEventListener('ratechange',rateChanged);s.watching=true;}
+    }
+    function releaseUnusedRate(media){
+        const s=states.get(media);
+        if(s&&s.watching&&s.desiredRate===null){media.removeEventListener('ratechange',rateChanged);s.watching=false;}
     }
     function editable(node){
         if(!node||node.nodeType!==1)return false;
@@ -73,24 +81,25 @@
     function hide(){
         if(hideTimer)clearTimeout(hideTimer);hideTimer=0;
         stopFollowing();
-        if(current)current.removeEventListener('ratechange',rateChanged);
+        if(current)releaseUnusedRate(current);
         if(indicator)indicator.remove();
         indicator=null;label=null;current=null;
     }
-    function rateChanged(){
-        if(!label||!current)return;
-        const s=states.get(current);
-        // Some players immediately undo a direct media change. Retry only a
-        // few times while the indicator is present; never poll or fight forever.
-        if(s&&s.pendingRate!==null&&!/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(location.hostname)&&
-            Date.now()-s.pendingAt<2500&&Math.abs(current.playbackRate-s.pendingRate)>.001&&s.retries<3){
-            s.retries++;try{current.playbackRate=s.pendingRate;}catch(_){}
+    function rateChanged(event){
+        const media=event.currentTarget,s=states.get(media);
+        // A site can restore its own speed after our change, including after
+        // the indicator disappears. React only to actual rate-change events;
+        // cap retries in a short window so a conflicting player cannot loop.
+        if(s&&s.desiredRate!==null&&Math.abs(media.playbackRate-s.desiredRate)>.001){
+            const now=Date.now();
+            if(now-s.retrySince>2500){s.retrySince=now;s.retries=0;}
+            if(s.retries<3){s.retries++;try{media.playbackRate=s.desiredRate;}catch(_){}}
         }
-        label.textContent=current.playbackRate.toFixed(2)+'×';
+        if(label&&current===media)label.textContent=media.playbackRate.toFixed(2)+'×';
     }
     function show(media,message){
         if(!document.documentElement)return;
-        if(current!==media){if(current)current.removeEventListener('ratechange',rateChanged);current=media;current.addEventListener('ratechange',rateChanged);}
+        if(current!==media){if(current)releaseUnusedRate(current);current=media;watchRate(media,state(media));}
         if(!indicator){
             indicator=document.createElement('div');
             indicator.setAttribute('role','group');indicator.setAttribute('aria-label','Velocidad de reproducción');
@@ -131,16 +140,20 @@
         s.pendingRate=null;return media.playbackRate;
     }
     function setRate(media,s,value){
-        s.pendingRate=value;s.pendingAt=Date.now();s.retries=0;
-        // YouTube may restore its player-level speed after a direct media
-        // change. The small main-world adapter synchronizes that state once.
-        if(/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(location.hostname)){
-            media.setAttribute('data-babinium-request-rate',String(value));
-            try{
-                if(!media.dispatchEvent(new Event('babinium-speed-request',{bubbles:true,cancelable:true})))return;
-            }finally{media.removeAttribute('data-babinium-request-rate');}
-        }
-        media.playbackRate=value;
+        const previous=s.desiredRate;
+        s.pendingRate=value;s.pendingAt=Date.now();s.desiredRate=value;s.retries=0;s.retrySince=s.pendingAt;
+        watchRate(media,s);
+        try{
+            // YouTube may restore its player-level speed after a direct media
+            // change. The small main-world adapter synchronizes that state once.
+            if(/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(location.hostname)){
+                media.setAttribute('data-babinium-request-rate',String(value));
+                try{
+                    if(!media.dispatchEvent(new Event('babinium-speed-request',{bubbles:true,cancelable:true})))return;
+                }finally{media.removeAttribute('data-babinium-request-rate');}
+            }
+            media.playbackRate=value;
+        }catch(error){s.desiredRate=previous;s.pendingRate=null;throw error;}
     }
     function apply(media,key){
         const s=state(media);let message='';

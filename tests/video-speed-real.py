@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Exercise trusted keys in real WebKit with local HTML5 video, audio and frames.
 
-Run under Xvfb against a remotely built bundle. ffmpeg generates a tiny test clip;
+Run on X11 against a remotely built bundle. ffmpeg generates a tiny test clip;
 no account, internet site, microphone or user profile is used.
 """
 import base64
@@ -67,7 +67,14 @@ with tempfile.TemporaryDirectory(prefix='bb-speed-media-') as tmp:
         p=subprocess.Popen([str(binary),'--profile',str(profile),'--no-update','--no-block','--quit-after','65',
             f'http://127.0.0.1:{parent.server_port}/{case}'],stdout=subprocess.DEVNULL,stderr=log)
         try:
-            wid=subprocess.check_output(['xdotool','search','--sync','--onlyvisible','--pid',str(p.pid)],text=True,timeout=10).splitlines()[0]
+            # On a real desktop, an unrelated window can disappear while
+            # xdotool enumerates the X11 window tree. Retry that transient race.
+            end=time.monotonic()+10;wid=None
+            while time.monotonic()<end and p.poll() is None:
+                result=subprocess.run(['xdotool','search','--onlyvisible','--pid',str(p.pid)],capture_output=True,text=True,timeout=5)
+                if result.returncode==0 and result.stdout.splitlines():wid=result.stdout.splitlines()[0];break
+                time.sleep(.1)
+            if not wid:raise AssertionError(f'{case}: browser window did not appear')
             def state():
                 title=subprocess.check_output(['xdotool','getwindowname',wid],text=True,timeout=5).strip()
                 if not title.startswith('BBSPEED:'):return None
@@ -102,6 +109,6 @@ with tempfile.TemporaryDirectory(prefix='bb-speed-media-') as tmp:
             print(json.dumps({'case':case,'speed':s['rate'],'playing':not s['paused'],'time':round(s['time'],2),'input_protected':s['input']=='d'}),flush=True)
         finally:p.terminate();p.wait(timeout=10);log.close()
     try:
-        for case in ('video','audio','shadow','embed','reset-once'):run(case)
+        for case in (sys.argv[3:] or ('video','audio','shadow','embed','reset-once')):run(case)
     finally:
         parent.shutdown();child.shutdown()

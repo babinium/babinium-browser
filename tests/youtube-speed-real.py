@@ -17,10 +17,12 @@ with (out/'stderr.log').open('w') as err:
         '--eval-after','30','--quit-after','100','https://www.youtube.com/watch?v=dQw4w9WgXcQ&hl=en'],stdout=subprocess.DEVNULL,stderr=err,start_new_session=True)
     try:
         wid=subprocess.check_output(['xdotool','search','--sync','--onlyvisible','--pid',str(p.pid)],text=True,timeout=10).splitlines()[0]
+        last_observation=[None]
         def state():
             title=subprocess.check_output(['xdotool','getwindowname',wid],text=True,timeout=5).strip()
             if not title.startswith('BBYTSPD:'):return None
-            try:return json.loads(base64.b64decode(title[8:].split(' — ')[0]))
+            try:
+                last_observation[0]=json.loads(base64.b64decode(title[8:].split(' — ')[0]));return last_observation[0]
             except (ValueError,TypeError):return None
         def wait(predicate,seconds=20):
             end=time.monotonic()+seconds
@@ -28,7 +30,7 @@ with (out/'stderr.log').open('w') as err:
                 value=state()
                 if value and predicate(value):return value
                 time.sleep(.2)
-            raise AssertionError('Timed out: '+str(state()))
+            raise AssertionError('Timed out: '+str(state())+'; last observation: '+str(last_observation[0]))
         def key(k):subprocess.run(['xdotool','key','--clearmodifiers','--window',wid,k],check=True,timeout=5)
         initial=wait(lambda s:s.get('height')==360 and s.get('time',0)>2 and not s.get('ad'),seconds=65)
         subprocess.run(['xdotool','windowfocus','--sync',wid],check=True)
@@ -40,6 +42,10 @@ with (out/'stderr.log').open('w') as err:
         wait(lambda s:not s.get('paused') and not s.get('ad'),seconds=15)
         key('d');first=wait(lambda s:abs(s.get('rate',0)-1.1)<.001 and not s.get('ad'))
         time.sleep(4);stable=state();assert abs(stable['rate']-1.1)<.001 and not stable['ad'],stable
+        assert not stable['indicator'],stable
+        key('F8');forced=wait(lambda s:s.get('forcedResets',0)>=1 and abs(s.get('rate',0)-1.1)<.001 and not s.get('ad'))
+        assert forced['forcedRate']==1,forced
+        time.sleep(2);after_forced=state();assert abs(after_forced['rate']-1.1)<.001 and not after_forced['ad'],after_forced
         key('d');key('d');wait(lambda s:abs(s.get('rate',0)-1.3)<.001)
         key('g');wait(lambda s:abs(s.get('rate',0)-1.8)<.001);key('g');wait(lambda s:abs(s.get('rate',0)-1.3)<.001)
         key('r');final=wait(lambda s:abs(s.get('rate',0)-1)<.001 and s.get('time',0)>first['time'] and not s.get('paused'))
@@ -50,16 +56,26 @@ with (out/'stderr.log').open('w') as err:
         key('j');marked_back=wait(lambda s:s.get('time',0)<marked_forward['time']-7 and not s.get('ad'))
         for _ in range(20):key('d')
         high=wait(lambda s:abs(s.get('rate',0)-3)<.001 and not s.get('ad'))
-        time.sleep(3);high_stable=state();assert abs(high_stable['rate']-3)<.001 and not high_stable['ad'],high_stable
+        time.sleep(10);high_stable=state()
+        assert abs(high_stable['rate']-3)<.001 and not high_stable['ad'] and not high_stable['paused'],high_stable
+        assert high_stable['time']>high['time']+2,high_stable
+        key('x');high_seek=wait(lambda s:s.get('time',0)>high_stable['time']+8 and not s.get('ad'))
+        time.sleep(2);after_high_seek=state()
+        assert abs(after_high_seek['rate']-3)<.001 and not after_high_seek['ad'],after_high_seek
         key('r');wait(lambda s:abs(s.get('rate',0)-1)<.001 and not s.get('ad'))
         result={'initial':initial,'after_d':first,'after_reset':final,'stable_after_4s':stable['rate'],
+            'forced_reset':forced,'after_forced_reset':after_forced['rate'],
             'forward':forward,'backward':backward,'marked_forward':marked_forward,'marked_back':marked_back,
-            'high_rate':high,'high_rate_after_3s':high_stable['rate']}
+            'high_rate':high,'high_rate_after_10s':high_stable['rate'],
+            'high_rate_advanced_seconds':high_stable['time']-high['time'],
+            'high_seek':high_seek,'high_rate_after_seek':after_high_seek['rate']}
         (out/'result.json').write_text(json.dumps(result,indent=2)+'\n')
         print(json.dumps({'initial_rate':initial['rate'],'after_d':first['rate'],'stable_after_4s':stable['rate'],
-            'after_reset':final['rate'],'advanced_seconds':round(final['time']-initial['time'],2),'indicator_seen':first['indicator'],
+            'after_reset':final['rate'],'after_forced_site_reset':after_forced['rate'],
+            'advanced_seconds':round(final['time']-initial['time'],2),'indicator_seen':first['indicator'],
             'seek_forward':round(forward['time']-before,2),'seek_back':round(forward['time']-backward['time'],2),
-            'marked_return':round(marked_forward['time']-marked_back['time'],2),'high_rate_after_3s':high_stable['rate']}),flush=True)
+            'marked_return':round(marked_forward['time']-marked_back['time'],2),'high_rate_after_10s':high_stable['rate'],
+            'high_rate_advanced_seconds':round(high_stable['time']-high['time'],2),'high_rate_after_seek':after_high_seek['rate']}),flush=True)
     finally:
         try:os.killpg(p.pid,signal.SIGTERM)
         except ProcessLookupError:pass

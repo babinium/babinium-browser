@@ -60,7 +60,7 @@ test('V pins and hides the indicator; its buttons adjust speed',()=>{
     assert.equal(f.html.children.length,1);assert.equal(f.timers.size,0);
     const button=f.html.children[0].children[2];button.listeners.get('click')({stopPropagation(){}});
     assert.equal(v.playbackRate,1.1);f.key('v');assert.equal(f.html.children.length,0);
-    assert.equal(v.listeners.has('ratechange'),false);
+    assert.equal(v.listeners.has('ratechange'),true);assert.equal(f.timers.size,0);
 });
 test('does not consume typing, browser shortcuts, composition or synthetic events',()=>{
     const f=fixture(),v=f.video();f.media.push(v);
@@ -88,9 +88,14 @@ test('finds dynamically added media and media in an open shadow root',()=>{
     const v=f.video(),root={querySelectorAll:sel=>sel==='video, audio'?[v]:[]},host=f.element('div');host.shadowRoot=root;f.document.roots.push(host);
     f.key('d');assert.equal(v.playbackRate,1.1);f.document.roots=[];f.media.push(v);f.key('d');assert.equal(v.playbackRate,1.2);
 });
-test('temporary indicators and listeners are removed after use',()=>{
+test('temporary indicators and position listeners are removed after use',()=>{
     const f=fixture(),v=f.video();f.media.push(v);f.key('d');assert.equal(f.timers.size,1);assert.equal(f.html.children.length,1);
-    f.flush();assert.equal(f.html.children.length,0);assert.equal(v.listeners.has('ratechange'),false);assert.equal(f.handlers.has('scroll'),false);
+    f.flush();assert.equal(f.html.children.length,0);assert.equal(v.listeners.has('ratechange'),true);assert.equal(f.handlers.has('scroll'),false);
+    assert.equal(f.timers.size,0);
+});
+test('viewing the indicator alone does not leave a media listener behind',()=>{
+    const f=fixture(),v=f.video();f.media.push(v);f.key('v');f.key('v');
+    assert.equal(v.listeners.has('ratechange'),false);assert.equal(f.timers.size,0);
 });
 test('a player rejecting a speed change does not break the page',()=>{
     const f=fixture(),v=f.video();f.media.push(v);Object.defineProperty(v,'playbackRate',{get:()=>1,set:()=>{throw new Error('unsupported');}});
@@ -98,15 +103,24 @@ test('a player rejecting a speed change does not break the page',()=>{
 });
 test('retries a short-lived player reset only a bounded number of times',()=>{
     const f=fixture(),v=f.video();f.media.push(v);f.key('d');
-    for(let i=0;i<3;i++){v.playbackRate=1;v.listeners.get('ratechange')();assert.equal(v.playbackRate,1.1);}
-    v.playbackRate=1;v.listeners.get('ratechange')();assert.equal(v.playbackRate,1);
-    f.flush();assert.equal(v.listeners.has('ratechange'),false);
+    for(let i=0;i<3;i++){v.playbackRate=1;v.listeners.get('ratechange')({currentTarget:v});assert.equal(v.playbackRate,1.1);}
+    v.playbackRate=1;v.listeners.get('ratechange')({currentTarget:v});assert.equal(v.playbackRate,1);
+    f.flush();assert.equal(v.listeners.has('ratechange'),true);assert.equal(f.timers.size,0);
 });
 test('successive YouTube shortcuts preserve pending speed while the player updates',()=>{
     const f=fixture({host:'www.youtube.com'}),v=f.video(),requests=[];f.media.push(v);
     v.dispatchEvent=e=>{assert.equal(e.type,'babinium-speed-request');requests.push(v.getAttribute('data-babinium-request-rate'));return false;};
     f.key('d');f.key('d');f.key('g');f.key('g');
     assert.deepEqual(requests,['1.1','1.2','1.8','1.2']);assert.equal(v.getAttribute('data-babinium-request-rate'),null);
+});
+test('YouTube reset after a browser shortcut is corrected, including after the indicator hides',()=>{
+    const f=fixture({host:'www.youtube.com'}),v=f.video();f.media.push(v);
+    v.dispatchEvent=()=>{v.playbackRate=Number(v.getAttribute('data-babinium-request-rate'));return false;};
+    f.key('d');assert.equal(v.playbackRate,1.1);
+    v.playbackRate=1;v.listeners.get('ratechange')({currentTarget:v});assert.equal(v.playbackRate,1.1);
+    f.flush();assert.equal(f.html.children.length,0);assert.equal(f.timers.size,0);
+    assert.equal(v.listeners.has('ratechange'),true);
+    v.playbackRate=1;v.listeners.get('ratechange')({currentTarget:v});assert.equal(v.playbackRate,1.1);
 });
 test('falls back to the media element if the YouTube adapter is unavailable',()=>{
     const f=fixture({host:'youtube.com'}),v=f.video();f.media.push(v);v.dispatchEvent=()=>true;
