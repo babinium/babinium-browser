@@ -13,10 +13,7 @@ jobs:
   compilar:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    container:
-      image: debian:13-slim
-      # WebKit's bubblewrap sandbox needs namespace creation inside Docker.
-      options: --cap-add=SYS_ADMIN --security-opt seccomp=unconfined --security-opt apparmor=unconfined
+    container: debian:13-slim
     defaults:
       run:
         shell: bash

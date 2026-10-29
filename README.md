@@ -42,6 +42,8 @@ para retirar los scriptlets ya ejecutados.
 
 La extensión de WebKit ejecuta el matcher Rust en su hilo principal, sin IPC por
 solicitud. Un motor por proceso web, compartido por las páginas de ese proceso.
+Las pestañas vacías son widgets GTK: el contexto WebKit y las vistas se crean
+sólo al navegar. Abrir pestañas vacías no inicia procesos web ni carga el índice.
 Se carga un índice serializado; no se parsean listas al arrancar la interfaz.
 Los scriptlets se inyectan al crear el contexto JavaScript antes de los scripts
 del sitio; la consulta cosmética nativa está en un mundo aislado. Los cambios del
@@ -78,6 +80,9 @@ make package
 
 El workflow manual `Compilar Debian 13 amd64` realiza estos pasos en un contenedor
 Debian 13. Opciones genéricas x86-64, sin `-march=native` ni adaptación al equipo.
+Actions compila, empaqueta y ejecuta pruebas unitarias. Las pruebas gráficas con
+sandbox y YouTube real se ejecutan como usuario normal en Debian; Docker introduce
+restricciones distintas sobre los namespaces de bubblewrap.
 Las listas se descargan al construir; los recursos de código tienen revisiones
 fijas en `data/upstream.json`. Cada descarga incluye procedencia y hash; las
 fuentes originales de los recursos se entregan con el artefacto. `Cargo.lock`

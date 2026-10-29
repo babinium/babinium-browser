@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-typedef struct Tab { GtkWidget *view,*label,*box; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
+typedef struct Tab { GtkWidget *view,*label,*box,*placeholder; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
 static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*downloads_box,*downloads_pop,*list_status;
 static WebKitWebContext *context;
 static GHashTable *disabled;
@@ -19,6 +19,10 @@ static gboolean no_block,no_update,autoplay,audit,updating,setting_shield;
 static gint64 start_time;
 static FILE *telemetry;
 static guint mapped_once,frame_once;
+static void ensure_context(void);
+static void attach_view(Tab *t);
+static void extension_init(WebKitWebContext *ctx,gpointer unused);
+static void extension_data(WebKitWebContext *ctx);
 
 static Tab *current(void){int n=gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));return n<0?NULL:g_object_get_data(G_OBJECT(gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook),n)),"tab");}
 static void log_event(const char *event,const char *value) {
@@ -33,11 +37,18 @@ static void log_event(const char *event,const char *value) {
     g_free(s);json_node_free(n);g_object_unref(g);g_object_unref(b);
 }
 static char *host_of(const char *uri){GUri *u=g_uri_parse(uri?uri:"",G_URI_FLAGS_PARSE_RELAXED,NULL);char *h=g_ascii_strdown(u&&g_uri_get_host(u)?g_uri_get_host(u):"",-1);if(u)g_uri_unref(u);return h;}
-static gboolean site_enabled(Tab *t){char *h=host_of(webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)));gboolean yes=!no_block&&!g_hash_table_contains(disabled,h);g_free(h);return yes;}
+static gboolean site_enabled(Tab *t){if(!t->view)return !no_block;char *h=host_of(webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)));gboolean yes=!no_block&&!g_hash_table_contains(disabled,h);g_free(h);return yes;}
 static char *sites_text(void){GString *s=g_string_new("");GHashTableIter it;gpointer key;g_hash_table_iter_init(&it,disabled);while(g_hash_table_iter_next(&it,&key,NULL)){g_string_append(s,key);g_string_append_c(s,'\n');}return g_string_free(s,FALSE);}
-static void sync_sites(void){char *text=sites_text();g_file_set_contents(sites_path,text,-1,NULL);for(guint i=0;i<tabs->len;i++){Tab *t=g_ptr_array_index(tabs,i);webkit_web_view_send_message_to_page(WEBKIT_WEB_VIEW(t->view),webkit_user_message_new("bb-settings",g_variant_new("(s)",text)),NULL,NULL,NULL);}g_free(text);}
+static void sync_sites(void){char *text=sites_text();g_file_set_contents(sites_path,text,-1,NULL);for(guint i=0;i<tabs->len;i++){Tab *t=g_ptr_array_index(tabs,i);if(t->view)webkit_web_view_send_message_to_page(WEBKIT_WEB_VIEW(t->view),webkit_user_message_new("bb-settings",g_variant_new("(s)",text)),NULL,NULL,NULL);}g_free(text);if(context)extension_data(context);}
 static void refresh_controls(void) {
     Tab *t=current();if(!t)return;
+    if(!t->view){
+        if(!gtk_widget_has_focus(address))gtk_entry_set_text(GTK_ENTRY(address),"");
+        gtk_widget_set_sensitive(back,FALSE);gtk_widget_set_sensitive(forward,FALSE);gtk_widget_set_sensitive(reload_btn,FALSE);gtk_widget_set_sensitive(shield,FALSE);
+        setting_shield=TRUE;gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(shield),!no_block);setting_shield=FALSE;
+        gtk_button_set_label(GTK_BUTTON(shield),no_block?"Sin bloqueo":"Bloqueo activado");gtk_window_set_title(GTK_WINDOW(window),"Nueva pestaña — Babinium");return;
+    }
+    gtk_widget_set_sensitive(reload_btn,TRUE);gtk_widget_set_sensitive(shield,!no_block);
     WebKitWebView *v=WEBKIT_WEB_VIEW(t->view);
     const char *uri=webkit_web_view_get_uri(v),*title=webkit_web_view_get_title(v);
     if(!gtk_widget_has_focus(address))gtk_entry_set_text(GTK_ENTRY(address),uri?uri:"");
@@ -55,9 +66,10 @@ static void go(Tab *t,const char *input) {
     if(g_uri_peek_scheme(text))url=g_strdup(text);
     else if(strchr(text,' ')||(!strchr(text,'.')&&!strchr(text,':')&&strcmp(text,"localhost"))){char *q=g_uri_escape_string(text,NULL,TRUE);url=g_strconcat("https://duckduckgo.com/?q=",q,NULL);g_free(q);}
     else url=g_strconcat("https://",text,NULL);
-    webkit_web_view_load_uri(WEBKIT_WEB_VIEW(t->view),url);g_free(url);g_free(text);
+    if(strcmp(url,"about:blank")||t->view){if(!t->view)attach_view(t);webkit_web_view_load_uri(WEBKIT_WEB_VIEW(t->view),url);}
+    g_free(url);g_free(text);
 }
-static void entry_activate(GtkEntry *e,gpointer unused){(void)unused;Tab *t=current();if(t){go(t,gtk_entry_get_text(e));gtk_widget_grab_focus(t->view);}}
+static void entry_activate(GtkEntry *e,gpointer unused){(void)unused;Tab *t=current();if(t){go(t,gtk_entry_get_text(e));if(t->view)gtk_widget_grab_focus(t->view);}}
 static void title_changed(GObject *obj,GParamSpec *ps,Tab *t){(void)ps;const char *s=webkit_web_view_get_title(WEBKIT_WEB_VIEW(obj));gtk_label_set_text(GTK_LABEL(t->label),s?s:"Nueva pestaña");if(t==current())refresh_controls();}
 static void changed(GObject *obj,GParamSpec *ps,Tab *t){(void)obj;(void)ps;if(t==current())refresh_controls();}
 static void load_changed(WebKitWebView *v,WebKitLoadEvent event,Tab *t){
@@ -88,13 +100,14 @@ static void close_tab(GtkWidget *button,Tab *t){
     if(!tabs->len)gtk_widget_destroy(window);else refresh_controls();
 }
 static Tab *new_tab(const char *uri,gboolean select);
-static WebKitWebView *create_view(WebKitWebView *v,WebKitNavigationAction *action,gpointer unused){(void)v;(void)action;(void)unused;return WEBKIT_WEB_VIEW(new_tab(NULL,TRUE)->view);}
+static WebKitWebView *create_view(WebKitWebView *v,WebKitNavigationAction *action,gpointer unused){(void)v;(void)action;(void)unused;Tab *t=new_tab(NULL,TRUE);attach_view(t);return WEBKIT_WEB_VIEW(t->view);}
 static void web_close(WebKitWebView *v,Tab *t){(void)v;close_tab(NULL,t);}
 static gboolean fullscreen_enter(WebKitWebView *v,gpointer unused){(void)v;(void)unused;gtk_widget_hide(toolbar);gtk_notebook_set_show_tabs(GTK_NOTEBOOK(notebook),FALSE);gtk_window_fullscreen(GTK_WINDOW(window));return FALSE;}
 static gboolean fullscreen_leave(WebKitWebView *v,gpointer unused){(void)v;(void)unused;gtk_widget_show(toolbar);gtk_notebook_set_show_tabs(GTK_NOTEBOOK(notebook),TRUE);gtk_window_unfullscreen(GTK_WINDOW(window));return FALSE;}
 static void terminated(WebKitWebView *v,WebKitWebProcessTerminationReason reason,Tab *t){(void)v;(void)t;char *s=g_strdup_printf("Proceso web terminado (%d); recargá la pestaña",reason);log_event("web_process_terminated",s);gtk_window_set_title(GTK_WINDOW(window),s);g_free(s);}
-static Tab *new_tab(const char *uri,gboolean select){
-    Tab *t=g_new0(Tab,1);t->box=gtk_box_new(GTK_ORIENTATION_VERTICAL,0);
+static void attach_view(Tab *t){
+    ensure_context();
+    if(t->placeholder){gtk_widget_destroy(t->placeholder);t->placeholder=NULL;}
     t->view=GTK_WIDGET(g_object_new(WEBKIT_TYPE_WEB_VIEW,"web-context",context,NULL));
     WebKitSettings *s=webkit_web_view_get_settings(WEBKIT_WEB_VIEW(t->view));
     webkit_settings_set_enable_developer_extras(s,audit);
@@ -104,13 +117,6 @@ static Tab *new_tab(const char *uri,gboolean select){
     webkit_settings_set_enable_dns_prefetching(s,FALSE);
     webkit_settings_set_javascript_can_open_windows_automatically(s,FALSE);
     gtk_box_pack_start(GTK_BOX(t->box),t->view,TRUE,TRUE,0);
-    GtkWidget *header=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,3);t->label=gtk_label_new("Nueva pestaña");
-    gtk_label_set_ellipsize(GTK_LABEL(t->label),PANGO_ELLIPSIZE_END);gtk_label_set_width_chars(GTK_LABEL(t->label),18);gtk_label_set_max_width_chars(GTK_LABEL(t->label),24);
-    GtkWidget *close=gtk_button_new_with_label("×");gtk_button_set_relief(GTK_BUTTON(close),GTK_RELIEF_NONE);
-    gtk_box_pack_start(GTK_BOX(header),t->label,TRUE,TRUE,0);gtk_box_pack_start(GTK_BOX(header),close,FALSE,FALSE,0);gtk_widget_show_all(header);
-    g_object_set_data(G_OBJECT(t->box),"tab",t);g_ptr_array_add(tabs,t);
-    int n=gtk_notebook_append_page(GTK_NOTEBOOK(notebook),t->box,header);gtk_notebook_set_tab_reorderable(GTK_NOTEBOOK(notebook),t->box,TRUE);
-    g_signal_connect(close,"clicked",G_CALLBACK(close_tab),t);
     g_signal_connect(t->view,"notify::title",G_CALLBACK(title_changed),t);
     g_signal_connect(t->view,"notify::uri",G_CALLBACK(changed),t);
     g_signal_connect(t->view,"notify::is-loading",G_CALLBACK(changed),t);
@@ -121,15 +127,27 @@ static Tab *new_tab(const char *uri,gboolean select){
     g_signal_connect(t->view,"create",G_CALLBACK(create_view),NULL);g_signal_connect(t->view,"close",G_CALLBACK(web_close),t);
     g_signal_connect(t->view,"enter-fullscreen",G_CALLBACK(fullscreen_enter),NULL);g_signal_connect(t->view,"leave-fullscreen",G_CALLBACK(fullscreen_leave),NULL);
     g_signal_connect(t->view,"web-process-terminated",G_CALLBACK(terminated),t);
+    gtk_widget_show_all(t->box);
+}
+static Tab *new_tab(const char *uri,gboolean select){
+    Tab *t=g_new0(Tab,1);t->box=gtk_box_new(GTK_ORIENTATION_VERTICAL,0);
+    t->placeholder=gtk_label_new("Nueva pestaña");gtk_box_pack_start(GTK_BOX(t->box),t->placeholder,TRUE,TRUE,0);
+    GtkWidget *header=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,3);t->label=gtk_label_new("Nueva pestaña");
+    gtk_label_set_ellipsize(GTK_LABEL(t->label),PANGO_ELLIPSIZE_END);gtk_label_set_width_chars(GTK_LABEL(t->label),18);gtk_label_set_max_width_chars(GTK_LABEL(t->label),24);
+    GtkWidget *close=gtk_button_new_with_label("×");gtk_button_set_relief(GTK_BUTTON(close),GTK_RELIEF_NONE);
+    gtk_box_pack_start(GTK_BOX(header),t->label,TRUE,TRUE,0);gtk_box_pack_start(GTK_BOX(header),close,FALSE,FALSE,0);gtk_widget_show_all(header);
+    g_object_set_data(G_OBJECT(t->box),"tab",t);g_ptr_array_add(tabs,t);
+    int n=gtk_notebook_append_page(GTK_NOTEBOOK(notebook),t->box,header);gtk_notebook_set_tab_reorderable(GTK_NOTEBOOK(notebook),t->box,TRUE);
+    g_signal_connect(close,"clicked",G_CALLBACK(close_tab),t);
     gtk_widget_show_all(t->box);if(select)gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),n);
     if(uri)go(t,uri);
     return t;
 }
-static void switch_page(GtkNotebook *n,GtkWidget *page,guint num,gpointer unused){(void)n;(void)page;(void)num;(void)unused;refresh_controls();}
-static void navigate(GtkButton *b,gpointer which){(void)b;Tab *t=current();if(!t)return;WebKitWebView *v=WEBKIT_WEB_VIEW(t->view);switch(GPOINTER_TO_INT(which)){case 0:webkit_web_view_go_back(v);break;case 1:webkit_web_view_go_forward(v);break;default:if(webkit_web_view_is_loading(v))webkit_web_view_stop_loading(v);else webkit_web_view_reload(v);}}
-static void add_tab(GtkButton *b,gpointer unused){(void)b;(void)unused;new_tab("about:blank",TRUE);gtk_widget_grab_focus(address);}
+static void switch_page(GtkNotebook *n,GtkWidget *page,guint num,gpointer unused){(void)n;(void)page;(void)num;(void)unused;Tab *t=current();const char *uri=t&&t->view?webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)):NULL;gtk_entry_set_text(GTK_ENTRY(address),uri?uri:"");refresh_controls();}
+static void navigate(GtkButton *b,gpointer which){(void)b;Tab *t=current();if(!t||!t->view)return;WebKitWebView *v=WEBKIT_WEB_VIEW(t->view);switch(GPOINTER_TO_INT(which)){case 0:webkit_web_view_go_back(v);break;case 1:webkit_web_view_go_forward(v);break;default:if(webkit_web_view_is_loading(v))webkit_web_view_stop_loading(v);else webkit_web_view_reload(v);}}
+static void add_tab(GtkButton *b,gpointer unused){(void)b;(void)unused;new_tab("about:blank",TRUE);gtk_entry_set_text(GTK_ENTRY(address),"");gtk_widget_grab_focus(address);}
 static void toggle_block(GtkToggleButton *button,gpointer unused){
-    (void)unused;if(setting_shield)return;Tab *t=current();if(!t)return;char *h=host_of(webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)));
+    (void)unused;if(setting_shield)return;Tab *t=current();if(!t||!t->view)return;char *h=host_of(webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)));
     if(!*h){g_free(h);refresh_controls();return;}
     if(gtk_toggle_button_get_active(button))g_hash_table_remove(disabled,h);else g_hash_table_add(disabled,g_strdup(h));
     g_free(h);sync_sites();webkit_web_view_reload(WEBKIT_WEB_VIEW(t->view));refresh_controls();
@@ -155,7 +173,7 @@ static void updater_finished(GObject *o,GAsyncResult *res,gpointer unused){
     (void)unused;GError *error=NULL;gboolean ok=g_subprocess_wait_check_finish(G_SUBPROCESS(o),res,&error);updating=FALSE;
     log_event(ok?"lists_updated":"lists_update_failed",error?error->message:"");
     gtk_label_set_text(GTK_LABEL(list_status),ok?"Listas verificadas · actualización automática cada 6 h":"Falló la actualización · se conservan las listas anteriores");
-    if(ok){char *idx=g_build_filename(filters_dir,"current","engine.bin",NULL);for(guint i=0;i<tabs->len;i++){Tab *t=g_ptr_array_index(tabs,i);webkit_web_view_send_message_to_page(WEBKIT_WEB_VIEW(t->view),webkit_user_message_new("bb-reload",g_variant_new("(s)",idx)),NULL,NULL,NULL);}g_free(idx);}
+    if(ok){char *idx=g_build_filename(filters_dir,"current","engine.bin",NULL);if(g_file_test(idx,G_FILE_TEST_IS_REGULAR)){g_free(index_path);index_path=g_strdup(idx);if(context)extension_data(context);for(guint i=0;i<tabs->len;i++){Tab *t=g_ptr_array_index(tabs,i);if(t->view)webkit_web_view_send_message_to_page(WEBKIT_WEB_VIEW(t->view),webkit_user_message_new("bb-reload",g_variant_new("(s)",idx)),NULL,NULL,NULL);}}g_free(idx);}
     g_clear_error(&error);g_object_unref(o);
 }
 static gboolean update_lists(gpointer force){
@@ -170,8 +188,8 @@ static gboolean key_press(GtkWidget *w,GdkEventKey *e,gpointer unused){
     (void)w;(void)unused;Tab *t=current();guint k=gdk_keyval_to_lower(e->keyval);gboolean ctrl=e->state&GDK_CONTROL_MASK;
     if(ctrl){switch(k){case GDK_KEY_l:gtk_widget_grab_focus(address);gtk_editable_select_region(GTK_EDITABLE(address),0,-1);return TRUE;
     case GDK_KEY_t:add_tab(NULL,NULL);return TRUE;case GDK_KEY_w:if(t)close_tab(NULL,t);return TRUE;
-    case GDK_KEY_r:if(t){if(e->state&GDK_SHIFT_MASK)webkit_web_view_reload_bypass_cache(WEBKIT_WEB_VIEW(t->view));else webkit_web_view_reload(WEBKIT_WEB_VIEW(t->view));}return TRUE;
-    case GDK_KEY_b:gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(shield),!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(shield)));return TRUE;
+    case GDK_KEY_r:if(t&&t->view){if(e->state&GDK_SHIFT_MASK)webkit_web_view_reload_bypass_cache(WEBKIT_WEB_VIEW(t->view));else webkit_web_view_reload(WEBKIT_WEB_VIEW(t->view));}return TRUE;
+    case GDK_KEY_b:if(t&&t->view&&!no_block)gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(shield),!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(shield)));return TRUE;
     case GDK_KEY_d:gtk_popover_popup(GTK_POPOVER(downloads_pop));return TRUE;
     case GDK_KEY_ISO_Left_Tab:case GDK_KEY_Tab:{int n=gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook)),count=gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),(n+((e->state&GDK_SHIFT_MASK)?count-1:1))%count);return TRUE;}
     default:if(k>=GDK_KEY_1&&k<=GDK_KEY_9){gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),k==GDK_KEY_9?-1:(int)(k-GDK_KEY_1));return TRUE;}}}
@@ -184,14 +202,24 @@ static gboolean mapped(GtkWidget *w,GdkEvent *e,gpointer unused){(void)w;(void)e
 static gboolean drawn(GtkWidget *w,cairo_t *cr,gpointer unused){(void)w;(void)cr;(void)unused;if(!frame_once++)log_event("ui_first_draw","");return FALSE;}
 static gboolean quit_timer(gpointer unused){(void)unused;gtk_widget_destroy(window);return G_SOURCE_REMOVE;}
 static void eval_result(GObject *o,GAsyncResult *res,gpointer unused){(void)unused;GError *e=NULL;JSCValue *v=webkit_web_view_evaluate_javascript_finish(WEBKIT_WEB_VIEW(o),res,&e);if(v){char *s=jsc_value_to_string(v);log_event("javascript",s);g_free(s);g_object_unref(v);}else log_event("javascript_error",e?e->message:"");g_clear_error(&e);}
-static gboolean eval_timer(gpointer unused){(void)unused;Tab *t=current();char *s=NULL;if(t&&opt_eval&&g_file_get_contents(opt_eval,&s,NULL,NULL)){webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(t->view),s,-1,NULL,NULL,NULL,eval_result,NULL);g_free(s);}return G_SOURCE_REMOVE;}
-static gboolean probe(gpointer unused){(void)unused;Tab *t=current();if(t)webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(t->view),"JSON.stringify({url:location.href,title:document.title,ready:document.readyState,video:[...document.querySelectorAll('video')].map(v=>({time:v.currentTime,duration:v.duration,paused:v.paused,ready:v.readyState,width:v.videoWidth,height:v.videoHeight,frames:v.getVideoPlaybackQuality?.().totalVideoFrames,dropped:v.getVideoPlaybackQuality?.().droppedVideoFrames,error:v.error?.message})),ad:!!document.querySelector('.ad-showing,.ad-interrupting'),error:document.querySelector('.ytp-error-content-wrap')?.innerText,playability:window.ytInitialPlayerResponse?.playabilityStatus?.status})",-1,NULL,NULL,NULL,eval_result,NULL);return G_SOURCE_CONTINUE;}
+static gboolean eval_timer(gpointer unused){(void)unused;Tab *t=current();char *s=NULL;if(t&&t->view&&opt_eval&&g_file_get_contents(opt_eval,&s,NULL,NULL)){webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(t->view),s,-1,NULL,NULL,NULL,eval_result,NULL);g_free(s);}return G_SOURCE_REMOVE;}
+static gboolean probe(gpointer unused){(void)unused;Tab *t=current();if(t&&t->view)webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(t->view),"JSON.stringify({url:location.href,title:document.title,ready:document.readyState,video:[...document.querySelectorAll('video')].map(v=>({time:v.currentTime,duration:v.duration,paused:v.paused,ready:v.readyState,width:v.videoWidth,height:v.videoHeight,frames:v.getVideoPlaybackQuality?.().totalVideoFrames,dropped:v.getVideoPlaybackQuality?.().droppedVideoFrames,error:v.error?.message})),ad:!!document.querySelector('.ad-showing,.ad-interrupting'),error:document.querySelector('.ytp-error-content-wrap')?.innerText,playability:window.ytInitialPlayerResponse?.playabilityStatus?.status})",-1,NULL,NULL,NULL,eval_result,NULL);return G_SOURCE_CONTINUE;}
 static gboolean screenshot(gpointer unused){(void)unused;GdkWindow *gw=gtk_widget_get_window(window);int width=gtk_widget_get_allocated_width(window),height=gtk_widget_get_allocated_height(window);GdkPixbuf *p=gdk_pixbuf_get_from_window(gw,0,0,width,height);if(p){GError *e=NULL;gdk_pixbuf_save(p,opt_screenshot,"png",&e,NULL);log_event("screenshot",e?e->message:opt_screenshot);g_clear_error(&e);g_object_unref(p);}return G_SOURCE_REMOVE;}
 static GtkWidget *button(const char *label,GCallback cb,gpointer data){GtkWidget *b=gtk_button_new_with_label(label);g_signal_connect(b,"clicked",cb,data);gtk_box_pack_start(GTK_BOX(toolbar),b,FALSE,FALSE,0);return b;}
-static void extension_init(WebKitWebContext *ctx,gpointer unused){
-    (void)unused;char *res=g_build_filename(data_dir,"resources.json",NULL),*js=g_build_filename(data_dir,"cosmetic.js",NULL),*sites=sites_text();
-    webkit_web_context_set_web_extensions_directory(ctx,ext_dir);
+static void extension_data(WebKitWebContext *ctx){
+    char *res=g_build_filename(data_dir,"resources.json",NULL),*js=g_build_filename(data_dir,"cosmetic.js",NULL),*sites=sites_text();
     webkit_web_context_set_web_extensions_initialization_user_data(ctx,g_variant_new("(ssssbb)",index_path,res,js,sites,no_block,audit));g_free(res);g_free(js);g_free(sites);
+}
+static void extension_init(WebKitWebContext *ctx,gpointer unused){(void)unused;webkit_web_context_set_web_extensions_directory(ctx,ext_dir);extension_data(ctx);}
+static void ensure_context(void){
+    if(context)return;
+    char *cache=g_build_filename(profile,"cache",NULL),*storage=g_build_filename(profile,"web-data",NULL);
+    WebKitWebsiteDataManager *dm=webkit_website_data_manager_new("base-data-directory",storage,"base-cache-directory",cache,NULL);context=webkit_web_context_new_with_website_data_manager(dm);g_object_unref(dm);g_free(cache);g_free(storage);
+    webkit_web_context_set_sandbox_enabled(context,TRUE);
+    webkit_web_context_add_path_to_sandbox(context,data_dir,TRUE);webkit_web_context_add_path_to_sandbox(context,filters_dir,TRUE);webkit_web_context_add_path_to_sandbox(context,ext_dir,TRUE);
+    webkit_web_context_set_cache_model(context,WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER);
+    WebKitCookieManager *cookies=webkit_web_context_get_cookie_manager(context);char *cookiepath=g_build_filename(profile,"cookies.sqlite",NULL);webkit_cookie_manager_set_persistent_storage(cookies,cookiepath,WEBKIT_COOKIE_PERSISTENT_STORAGE_SQLITE);g_free(cookiepath);webkit_cookie_manager_set_accept_policy(cookies,WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY);
+    g_signal_connect(context,"initialize-web-extensions",G_CALLBACK(extension_init),NULL);g_signal_connect(context,"download-started",G_CALLBACK(download_started),NULL);
 }
 int main(int argc,char **argv){
     start_time=g_get_monotonic_time();setlocale(LC_ALL,"");
@@ -220,13 +248,6 @@ int main(int argc,char **argv){
     index_path=g_build_filename(filters_dir,"current","engine.bin",NULL);if(!g_file_test(index_path,G_FILE_TEST_IS_REGULAR)){g_free(index_path);index_path=g_build_filename(data_dir,"engine.bin",NULL);}
     char *respath=g_build_filename(data_dir,"resources.json",NULL);
     if(!no_block&&(!g_file_test(index_path,G_FILE_TEST_IS_REGULAR)||!g_file_test(respath,G_FILE_TEST_IS_REGULAR))){g_printerr("Faltan los datos de bloqueo en %s\n",data_dir);return 2;}g_free(respath);
-    char *cache=g_build_filename(profile,"cache",NULL),*storage=g_build_filename(profile,"web-data",NULL);
-    WebKitWebsiteDataManager *dm=webkit_website_data_manager_new("base-data-directory",storage,"base-cache-directory",cache,NULL);context=webkit_web_context_new_with_website_data_manager(dm);g_object_unref(dm);g_free(cache);g_free(storage);
-    webkit_web_context_set_sandbox_enabled(context,TRUE);
-    webkit_web_context_add_path_to_sandbox(context,data_dir,TRUE);webkit_web_context_add_path_to_sandbox(context,filters_dir,TRUE);webkit_web_context_add_path_to_sandbox(context,ext_dir,TRUE);
-    webkit_web_context_set_cache_model(context,WEBKIT_CACHE_MODEL_DOCUMENT_VIEWER);
-    WebKitCookieManager *cookies=webkit_web_context_get_cookie_manager(context);char *cookiepath=g_build_filename(profile,"cookies.sqlite",NULL);webkit_cookie_manager_set_persistent_storage(cookies,cookiepath,WEBKIT_COOKIE_PERSISTENT_STORAGE_SQLITE);g_free(cookiepath);webkit_cookie_manager_set_accept_policy(cookies,WEBKIT_COOKIE_POLICY_ACCEPT_NO_THIRD_PARTY);
-    g_signal_connect(context,"initialize-web-extensions",G_CALLBACK(extension_init),NULL);g_signal_connect(context,"download-started",G_CALLBACK(download_started),NULL);
     tabs=g_ptr_array_new();window=gtk_window_new(GTK_WINDOW_TOPLEVEL);gtk_window_set_default_size(GTK_WINDOW(window),1100,740);gtk_window_set_title(GTK_WINDOW(window),"Babinium Browser");gtk_window_set_wmclass(GTK_WINDOW(window),"babinium-browser","BabiniumBrowser");
     root=gtk_box_new(GTK_ORIENTATION_VERTICAL,0);gtk_container_add(GTK_CONTAINER(window),root);toolbar=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,3);gtk_container_set_border_width(GTK_CONTAINER(toolbar),4);gtk_box_pack_start(GTK_BOX(root),toolbar,FALSE,FALSE,0);
     back=button("Atrás",G_CALLBACK(navigate),GINT_TO_POINTER(0));forward=button("Adelante",G_CALLBACK(navigate),GINT_TO_POINTER(1));reload_btn=button("Recargar",G_CALLBACK(navigate),GINT_TO_POINTER(2));
@@ -237,7 +258,7 @@ int main(int argc,char **argv){
     g_signal_connect_after(notebook,"switch-page",G_CALLBACK(switch_page),NULL);g_signal_connect(window,"destroy",G_CALLBACK(gtk_main_quit),NULL);g_signal_connect(window,"key-press-event",G_CALLBACK(key_press),NULL);g_signal_connect(window,"map-event",G_CALLBACK(mapped),NULL);g_signal_connect(window,"draw",G_CALLBACK(drawn),NULL);
     if(argc<2)new_tab("about:blank",TRUE);else for(int i=1;i<argc;i++)new_tab(argv[i],TRUE);
     gtk_widget_show_all(window);refresh_controls();
-    char *version=g_strdup_printf("WebKitGTK %u.%u.%u; sandbox=%d",webkit_get_major_version(),webkit_get_minor_version(),webkit_get_micro_version(),webkit_web_context_get_sandbox_enabled(context));log_event("runtime",version);g_free(version);
+    char *version=g_strdup_printf("WebKitGTK %u.%u.%u; sandbox=%d",webkit_get_major_version(),webkit_get_minor_version(),webkit_get_micro_version(),context?webkit_web_context_get_sandbox_enabled(context):TRUE);log_event("runtime",version);g_free(version);
     if(!no_update){g_timeout_add_seconds(30,update_lists,NULL);g_timeout_add_seconds(3600,update_tick,NULL);}
     if(quit_after>0)g_timeout_add_seconds(quit_after,quit_timer,NULL);
     if(opt_eval)g_timeout_add_seconds(MAX(1,eval_after),eval_timer,NULL);

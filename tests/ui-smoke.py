@@ -48,7 +48,10 @@ def run(binary,output):
                     subprocess.run(['xdotool','windowfocus','--sync',wid],check=True,timeout=5)
                     def key(k):subprocess.run(['xdotool','key','--clearmodifiers','--window',wid,k],check=True,timeout=5)
                     def title():return subprocess.check_output(['xdotool','getwindowname',wid],text=True,timeout=5)
-                    key('ctrl+t');key('ctrl+l')
+                    loads=sum(e['event']=='load_started' for e in events())
+                    key('ctrl+t');wait_for(lambda:'Nueva pestaña' in title());time.sleep(.4)
+                    assert sum(e['event']=='load_started' for e in events())==loads,'Empty tab launched WebKit'
+                    key('ctrl+l')
                     subprocess.run(['xdotool','type','--clearmodifiers','--window',wid,'--delay','1',url+'/second'],check=True,timeout=5);key('Return')
                     wait_for(lambda:'Fixture /second' in title())
                     key('ctrl+shift+Tab');wait_for(lambda:'Fixture /first' in title())

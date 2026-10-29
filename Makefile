@@ -1,5 +1,5 @@
 PREFIX ?= /usr
-CFLAGS ?= -O2 -march=x86-64 -mtune=generic
+CFLAGS ?= -O2
 CFLAGS += -std=c11 -D_DEFAULT_SOURCE -Wall -Wextra -Wno-deprecated-declarations -ffunction-sections -fdata-sections
 UI_PKGS = webkit2gtk-4.1 gtk+-3.0 json-glib-1.0
 EXT_PKGS = webkit2gtk-web-extension-4.1 json-glib-1.0
