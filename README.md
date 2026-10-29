@@ -8,7 +8,8 @@ la simplicidad de surf; la interfaz es nueva. Licencia GPL-3.0-o-posterior.
 Se validaron reproducción real de YouTube, bloqueo de solicitudes publicitarias
 y modificación de datos del reproductor. La eliminación de preroll/midroll no
 quedó demostrada porque el control tampoco mostró anuncios de vídeo.
-Véase el [informe de validación y consumo](docs/validation.md).
+Véanse los informes de [validación 0.2](docs/validation-0.2.md) y del
+[prototipo inicial 0.1](docs/validation.md).
 La [lista de requisitos y su estado](docs/REQUISITOS.md) conserva todos los
 pedidos y los puntos que todavía requieren pruebas.
 
@@ -58,8 +59,9 @@ seguimiento; no es un contador de anuncios de vídeo.
 YouTube recibe una preferencia inicial de 360p mediante un método interno del
 reproductor, que YouTube puede cambiar o ignorar. El usuario puede elegir otra
 calidad en el reproductor. El navegador consulta `MediaCapabilities` para 360p:
-si informa que H.264 es fluido y eficiente, y que VP9 o AV1 no lo son, prioriza
-H.264 para ese sitio. En los demás casos mantiene la elección normal del motor.
+si informa que H.264 es fluido y eficiente, y que VP9 o AV1 no lo son, intenta
+priorizar H.264 para ese sitio. Si la reproducción ya comenzó o no se obtiene una
+respuesta útil, mantiene la elección normal del motor.
 Si un vídeo no ofrece H.264 o falla el elemento de vídeo, reintenta una vez con
 la negociación normal. WebKit/GStreamer pueden utilizar decodificación por
 hardware si está configurada, pero las capacidades informadas no garantizan un

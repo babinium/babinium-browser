@@ -14,7 +14,8 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
   sin optimizar para un modelo de procesador ni una cantidad de memoria.
 - [x] Medir RAM de todos los procesos, CPU y arranque durante el desarrollo;
   conservar el método y las condiciones de las pruebas.
-- [ ] Repetir las mediciones con las nuevas funciones y con YouTube real.
+- [x] Repetir las mediciones con las nuevas funciones y con YouTube real; el
+  informe identifica qué binario y condiciones se usaron para cada muestra.
 - [ ] Antes de una versión estable, revisar y quitar del producto las opciones
   de instrumentación que no sean fundamentales; mantener las pruebas externas.
 - [x] Evitar afirmaciones de ser el navegador más liviano sin una comparación
@@ -29,22 +30,27 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
 - [ ] Validar bloqueo de anuncios de vídeo de YouTube frente a una reproducción
   de control donde efectivamente aparezca un anuncio; la prueba anterior observó
   eliminación de datos publicitarios, pero no pudo confirmar un preroll real.
-- [ ] Configurar YouTube por defecto para priorizar consumo bajo y fluidez,
+- [x] Configurar YouTube por defecto para priorizar consumo bajo y fluidez,
   incluyendo calidad y códecs cuando sea técnicamente posible; medir el efecto,
-  conservar la reproducción y permitir que el usuario cambie la calidad.
+  conservar la reproducción y permitir que el usuario cambie la calidad. La
+  preferencia de resolución usa un método interno que YouTube puede cambiar; la
+  selección de códec es tentativa y no se demostró una mejora general de CPU.
 
 ## Interfaz y datos
 
 - [x] Barra de direcciones, navegación, pestañas y descargas.
-- [ ] Usar Google como buscador predeterminado.
-- [ ] Modo oscuro de páginas activado por defecto, similar a Dark Reader, con
+- [x] Usar Google como buscador predeterminado.
+- [x] Modo oscuro de páginas activado por defecto, con la API de Dark Reader y
   un control por sitio cuando un diseño resulte incompatible.
-- [ ] Mostrar «Babinium» al extremo derecho de la barra de pestañas.
-- [ ] Mostrar negro desde el primer instante en una pestaña nueva vacía.
-- [ ] Permitir guardar, consultar y quitar favoritos y conservarlos al cerrar.
-- [ ] Conservar sesiones, cookies y datos de sitios entre reinicios; comprobar
-  persistencia y documentar cualquier límite específico del inicio de sesión
-  de Google/YouTube sin pedir ni almacenar contraseñas en el proyecto.
+- [x] Mostrar «Babinium» al extremo derecho de la barra de pestañas.
+- [x] Mostrar negro desde el primer instante en una pestaña nueva vacía.
+- [x] Permitir guardar, consultar y quitar favoritos y conservarlos al cerrar.
+- [x] Conservar cookies, almacenamiento local e IndexedDB entre reinicios; se
+  verificó con un perfil de prueba independiente.
+- [ ] Verificar una sesión real de Google/YouTube al reiniciar. La página de
+  acceso carga, pero todavía no se probó una cuenta autenticada; Google puede
+  limitar los navegadores integrados. No pedir ni guardar contraseñas en el
+  proyecto ni usar el perfil real del usuario para las pruebas automáticas.
 
 ## Entrega
 

@@ -11,5 +11,5 @@
     }
     play();
     const p=document.getElementById('movie_player'),r=p?.getPlayerResponse?.();
-    return JSON.stringify({url:location.href,title:document.title,consentRejected:!!reject,videoFound:!!document.querySelector('video'),quality:p?.getPlaybackQuality?.(),stats:p?.getStatsForNerds?.(),videoId:r?.videoDetails?.videoId,ads:{placements:r?.adPlacements?.length??0,slots:r?.adSlots?.length??0,playerAds:r?.playerAds?.length??0}});
+    return JSON.stringify({url:location.href,title:document.title,consentRejected:!!reject,videoFound:!!document.querySelector('video'),quality:p?.getPlaybackQuality?.(),stats:p?.getStatsForNerds?.(),videoId:r?.videoDetails?.videoId,codecFallback:sessionStorage.getItem('babinium-codec-fallback:'+(new URL(location.href).searchParams.get('v')||'')),ads:{placements:r?.adPlacements?.length??0,slots:r?.adSlots?.length??0,playerAds:r?.playerAds?.length??0}});
 })();
