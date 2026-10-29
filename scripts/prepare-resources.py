@@ -36,8 +36,10 @@ if len(names)!=len(set(names)):raise ValueError('Duplicate resource names')
 for n in ['redirects.json','scriptlets.json']:(out/n).unlink()
 lists=out/'lists';lists.mkdir(exist_ok=True)
 manifest=[]
-for source in json.loads((ROOT/'data/sources.json').read_text()):
-    text,meta=updater.fetch(source['url'],{})
+sources=json.loads((ROOT/'data/sources.json').read_text())
+includes={s['url'].rsplit('/',1)[-1] for s in sources}
+for source in sources:
+    text,meta=updater.fetch(source['url'],{},includes)
     (lists/source['file']).write_text(text)
     manifest.append({'file':source['file'],**meta})
 (out/'seed-provenance.json').write_text(json.dumps(manifest,indent=2)+'\n')

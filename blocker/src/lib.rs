@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 //! Small C ABI. Each engine is confined to its WebKit web-process main thread.
 use adblock::{Engine, FilterSet, lists::ParseOptions, resources::{Resource, PermissionMask}, request::Request};
-use std::{collections::HashSet, ffi::{CStr, CString, c_char}, fs, path::Path};
+use std::{ffi::{CStr, CString, c_char}, fs, path::Path};
 
 pub fn load(index: &Path, resources: &Path) -> Result<Engine, String> {
     let mut engine = Engine::default();
@@ -44,7 +44,7 @@ pub unsafe extern "C" fn bb_engine_free(p: *mut Engine) { if !p.is_null() { drop
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn bb_string_free(p: *mut c_char) { if !p.is_null() { drop(unsafe { CString::from_raw(p) }); } }
 
-/// 0=allow, 1=block, 2=redirect. Caller owns *redirect when non-null.
+/// 0=allow, 1=block, 2=local replacement, 3=removeparam. Caller owns *redirect.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn bb_check(p: *const Engine, url: *const c_char, source: *const c_char,
     kind: *const c_char, method: *const c_char, redirect: *mut *mut c_char) -> i32 {
@@ -52,10 +52,16 @@ pub unsafe extern "C" fn bb_check(p: *const Engine, url: *const c_char, source: 
     if p.is_null() { return 0; }
     let Ok(req) = Request::new(unsafe { string(url) }, unsafe { string(source) }, unsafe { string(kind) }, unsafe { string(method) }) else { return 0; };
     let result = unsafe { &*p }.check_network_request(&req);
-    if let Some(data) = result.redirect {
-        if !redirect.is_null() { unsafe { *redirect = returned(data) }; return 2; }
+    if result.should_block() {
+        if let Some(data) = result.redirect {
+            if !redirect.is_null() { unsafe { *redirect = returned(data) }; return 2; }
+        }
+        return 1;
     }
-    i32::from(result.matched)
+    if let Some(url)=result.rewritten_url {
+        if !redirect.is_null() { unsafe { *redirect=returned(url) }; return 3; }
+    }
+    0
 }
 
 #[unsafe(no_mangle)]
@@ -78,6 +84,7 @@ pub unsafe extern "C" fn bb_generic(p: *const Engine, url: *const c_char, classe
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
     fn engine() -> Engine {
         let mut s = FilterSet::new(false);
         s.add_filters(["||ads.example^", "@@||ads.example/allowed.js", "example.org##.sponsor", "##.generic-ad", "example.org#@#.generic-ad"], Default::default());
@@ -85,8 +92,8 @@ mod tests {
     }
     #[test] fn network_and_exception() {
         let e = engine();
-        assert!(e.check_network_request(&Request::new("https://ads.example/a.js", "https://example.org/", "script", "GET").unwrap()).matched);
-        assert!(!e.check_network_request(&Request::new("https://ads.example/allowed.js", "https://example.org/", "script", "GET").unwrap()).matched);
+        assert!(e.check_network_request(&Request::new("https://ads.example/a.js", "https://example.org/", "script", "GET").unwrap()).should_block());
+        assert!(!e.check_network_request(&Request::new("https://ads.example/allowed.js", "https://example.org/", "script", "GET").unwrap()).should_block());
     }
     #[test] fn cosmetics_and_exception() {
         let e = engine(); let r = e.url_cosmetic_resources("https://example.org/");

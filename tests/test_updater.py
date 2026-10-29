@@ -18,5 +18,7 @@ class PreprocessorTest(unittest.TestCase):
             with self.subTest(text=text),self.assertRaises(ValueError):updater.preprocess(text)
     def test_unknown_include_cannot_silently_omit_rules(self):
         with self.assertRaises(ValueError):updater.preprocess('!#include missing.txt')
+    def test_explicitly_enumerated_include_is_not_loaded_twice(self):
+        self.assertEqual(updater.preprocess('||ad.test^\n!#include filters-2026.txt',{'filters-2026.txt'}),'||ad.test^\n')
 
 if __name__=='__main__':unittest.main()

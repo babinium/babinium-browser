@@ -19,6 +19,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import urllib.parse
 
 MAX_BYTES = 32 * 1024 * 1024
 CAPABILITIES = {"env_safari", "ext_ublock"}
@@ -55,7 +56,7 @@ def condition(expression):
     if pos!=len(tokens):raise ValueError("Trailing condition")
     return result
 
-def preprocess(text):
+def preprocess(text, includes=frozenset()):
     stack=[]; active=True; out=[]
     for line in text.splitlines():
         if line.startswith('!#if '):
@@ -69,12 +70,12 @@ def preprocess(text):
             if not stack:raise ValueError("Unexpected endif")
             active=stack.pop()[0]
         elif line.startswith('!#include'):
-            if active:raise ValueError("Includes must be enumerated in sources.json")
+            if active and line.split(maxsplit=1)[-1] not in includes:raise ValueError("Includes must be enumerated in sources.json: "+line)
         elif active:out.append(line)
     if stack:raise ValueError("Unterminated preprocessor condition")
     return '\n'.join(out)+'\n'
 
-def fetch(url, previous):
+def fetch(url, previous, includes=frozenset()):
     if not url.startswith('https://'):raise ValueError("HTTPS required")
     headers={'User-Agent':'BabiniumBrowser/0.1 filter-updater'}
     if previous.get('etag'):headers['If-None-Match']=previous['etag']
@@ -86,7 +87,7 @@ def fetch(url, previous):
             if len(body)>MAX_BYTES:raise ValueError("List too large")
             text=body.decode('utf-8-sig')
             if len(text)<100 or text.lstrip().startswith('<'):raise ValueError("Not a filter list")
-            return preprocess(text),{'url':url,'etag':response.headers.get('ETag'),'modified':response.headers.get('Last-Modified'),'sha256_source':hashlib.sha256(body).hexdigest()}
+            return preprocess(text,includes),{'url':url,'etag':response.headers.get('ETag'),'modified':response.headers.get('Last-Modified'),'sha256_source':hashlib.sha256(body).hexdigest()}
     except urllib.error.HTTPError as e:
         if e.code==304:return None,previous
         raise
@@ -100,13 +101,14 @@ def update(args):
         if (current/'state.json').exists():old=json.loads((current/'state.json').read_text())
         if not args.force and time.time()-old.get('updated',0)<6*3600 and (current/'engine.bin').exists():return
         sources=json.loads((data/'sources.json').read_text())
+        includes={urllib.parse.urlparse(s['url']).path.rsplit('/',1)[-1] for s in sources}
         stage=Path(tempfile.mkdtemp(prefix='generation-',dir=cache))
         try:
             lists=stage/'lists';lists.mkdir()
             state={'updated':time.time(),'sources':{}}
             for source in sources:
                 name=source['file']; previous=old.get('sources',{}).get(name,{})
-                text,meta=fetch(source['url'],previous)
+                text,meta=fetch(source['url'],previous,includes)
                 if text is None:
                     shutil.copyfile(current/'lists'/name,lists/name)
                 else:(lists/name).write_text(text)

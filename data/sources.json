@@ -12,5 +12,6 @@
   {"file":"ubo-general.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-general.txt"},
   {"file":"ubo-quick-fixes.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/quick-fixes.txt"},
   {"file":"ubo-unbreak.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/unbreak.txt"},
-  {"file":"ubo-privacy.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/privacy.txt"}
+  {"file":"ubo-privacy.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/privacy.txt"},
+  {"file":"ubo-shorteners.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/ubo-link-shorteners.txt"}
 ]

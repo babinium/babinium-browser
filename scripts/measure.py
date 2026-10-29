@@ -82,6 +82,13 @@ def main():
     complete=[s for s in steady if s['pss_complete']]
     duration=samples[-1]['seconds'] if samples else 0
     summary={'command':command,'display':env.get('DISPLAY'),'kernel':platform.release(),'machine':platform.machine(),'logical_cpus':os.cpu_count(),'duration_seconds':duration,'warmup_seconds':args.warmup,'interval_seconds':args.interval,'rss_peak_mib':max((s['rss_kib'] for s in samples),default=0)/1024,'rss_steady_median_mib':statistics.median(s['rss_kib'] for s in steady)/1024 if steady else None,'pss_steady_median_mib':statistics.median(s['pss_kib'] for s in complete)/1024 if complete and len(complete)==len(steady) else None,'pss_peak_mib':max((s['pss_kib'] for s in samples if s['pss_complete']),default=0)/1024,'pss_complete_samples':len(complete),'steady_samples':len(steady),'max_process_count':max((len(s['processes']) for s in samples),default=0),'cpu_seconds':samples[-1]['cpu_seconds'] if samples else 0,'cpu_mean_one_core_percent':samples[-1]['cpu_seconds']/duration*100 if duration else None,'cpu_steady_one_core_percent':(steady[-1]['cpu_seconds']-steady[0]['cpu_seconds'])/(steady[-1]['seconds']-steady[0]['seconds'])*100 if len(steady)>1 else None,'returncode_after_measurement':child.returncode,'notes':['RSS sum double counts shared mappings; PSS is proportional.','Session and descendants are included. Helpers that start and exit between samples may be missed.','CPU includes only sampled processes and excludes the sampler, X server and unrelated desktop applications.','Normal application updates are disabled in steady-state experiments and measured separately.']}
+    if '--telemetry' in command:
+        telemetry=Path(command[command.index('--telemetry')+1])
+        if telemetry.exists():
+            events=[json.loads(l) for l in telemetry.read_text().splitlines() if l.strip()]
+            for kind in ['ui_mapped','ui_first_draw','load_committed','load_finished']:
+                first=next((e for e in events if e['event']==kind),None)
+                if first and 'monotonic_us' in first:summary[kind+'_from_spawn_ms']=first['monotonic_us']/1000-start*1000
     (out/'summary.json').write_text(json.dumps(summary,indent=2)+'\n');print(json.dumps(summary,indent=2))
 
 if __name__=='__main__':main()

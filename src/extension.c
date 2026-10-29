@@ -80,7 +80,7 @@ static gboolean send_request(WebKitWebPage *page,WebKitURIRequest *req,WebKitURI
     char *redirect=NULL;
     int result=bb_check(engine,url,ref?ref:(top?top:url),type,webkit_uri_request_get_http_method(req),&redirect);
     p->checked++;
-    if(result) {
+    if(result==1||result==2) {
         p->blocked++;
         if(audit) {
             WebKitUserMessage *m=webkit_user_message_new("bb-block",g_variant_new("(ssi)",url,type,result));
@@ -90,6 +90,7 @@ static gboolean send_request(WebKitWebPage *page,WebKitURIRequest *req,WebKitURI
     changed(p);
     /* WebKit accepts URI changes here. Redirects are local data resources only. */
     if(result==2 && redirect && g_str_has_prefix(redirect,"data:"))webkit_uri_request_set_uri(req,redirect);
+    if(result==3 && redirect)webkit_uri_request_set_uri(req,redirect);
     bb_string_free(redirect);
     return result==1;
 }
