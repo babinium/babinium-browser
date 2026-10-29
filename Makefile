@@ -29,6 +29,7 @@ build/bin/babinium-filter-update: scripts/filter-update.py
 
 resources: all
 	python3 scripts/prepare-resources.py
+	python3 scripts/license-notices.py
 	cp data/cosmetic.js data/sources.json data/upstream.json build/share/babinium-browser/
 
 test: all

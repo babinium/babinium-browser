@@ -8,6 +8,7 @@ cp -r build/share/babinium-browser/* "$stage/usr/share/babinium-browser/"
 cp packaging/babinium-browser.desktop "$stage/usr/share/applications/"
 cp packaging/babinium-browser.svg "$stage/usr/share/icons/hicolor/scalable/apps/"
 cp LICENSE THIRD_PARTY.md README.md "$stage/usr/share/doc/babinium-browser/"
+cp build/share/babinium-browser/THIRD_PARTY_NOTICES.txt "$stage/usr/share/doc/babinium-browser/"
 cat > "$stage/DEBIAN/control" <<'EOF'
 Package: babinium-browser
 Version: 0.1.0
