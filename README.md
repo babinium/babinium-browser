@@ -5,7 +5,10 @@ Prototipo de navegador libre para Debian 13, escrito en C/GTK 3, con WebKitGTK
 la simplicidad de surf; la interfaz es nueva. Licencia GPL-3.0-o-posterior.
 
 **Estado: experimental.** No se presenta como el navegador de menor consumo.
-La compatibilidad con YouTube y su bloqueo requieren validación continua.
+Se validaron reproducción real de YouTube, bloqueo de solicitudes publicitarias
+y modificación de datos del reproductor. La eliminación de preroll/midroll no
+quedó demostrada porque el control tampoco mostró anuncios de vídeo.
+Véase el [informe de validación y consumo](docs/validation.md).
 
 - Barra de direcciones y búsqueda, atrás/adelante, pestañas y descargas.
 - Bloqueo de solicitudes, CSS específico y genérico, scriptlets uBO/Brave.
@@ -37,6 +40,8 @@ Ctrl+B bloqueo por sitio, Ctrl+D descargas. El panel de descargas permite forzar
 la actualización de listas. Cambiar el bloqueo recarga la pestaña; otras pestañas
 del mismo hostname aplican la decisión de red inmediatamente y necesitan recarga
 para retirar los scriptlets ya ejecutados.
+El contador muestra solicitudes bloqueadas acumuladas en la pestaña, incluyendo
+seguimiento; no es un contador de anuncios de vídeo.
 
 ## Arquitectura y límites
 

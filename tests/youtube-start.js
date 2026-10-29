@@ -6,13 +6,13 @@
     const player=document.getElementById('movie_player');
     try{player?.setPlaybackQualityRange?.('medium','medium');player?.setPlaybackQuality?.('medium');}catch{}
     const video=document.querySelector('video');
-    if(video){video.muted=true;video.play().catch(()=>{});}
+    if(video){video.muted=true;player?.playVideo?.();video.play().catch(()=>{});}
     // YouTube may replace its video element while negotiating a stream. Retry
     // play on the new element for 30 s; never seek, skip, or remove ad elements.
     let retries=20;
     function resumeReplacement(){
         const v=document.querySelector('video');
-        if(v&&v.paused&&v.readyState>=2){v.muted=true;v.play().catch(()=>{});}
+        if(v&&v.paused){v.muted=true;document.getElementById('movie_player')?.playVideo?.();v.play().catch(()=>{});}
         if(--retries>0)setTimeout(resumeReplacement,1500);
     }
     setTimeout(resumeReplacement,1500);

@@ -1,0 +1,472 @@
+{
+  "date": "2026-10-29",
+  "runtime_commit": "6d93a861f50ed73f579aa7870dd8d62aa14a1c15",
+  "build_run": "https://github.com/babinium/babinium-browser/actions/runs/40816193802",
+  "environment": {
+    "os": "Debian 13.7 amd64",
+    "kernel": "6.12.113+deb13-amd64",
+    "webkitgtk": "2.54.0",
+    "gstreamer": "1.26.2",
+    "display": "X11 physical display, not Xvfb",
+    "test_cpu": "Intel Celeron B820, 2 logical CPUs",
+    "design_cpu_flags": "generic x86-64 baseline; no CPU-specific tuning",
+    "fresh_profiles": true,
+    "os_caches_dropped": false,
+    "cpu_percent_basis": "100% equals one logical CPU",
+    "sampling_interval_seconds": 1
+  },
+  "cases": [
+    {
+      "case": "automatic-update",
+      "duration_seconds": 59.01062589899993,
+      "warmup_seconds": 10.0,
+      "rss_peak_mib": 100.69140625,
+      "rss_steady_median_mib": 68.1328125,
+      "pss_steady_median_mib": 43.2763671875,
+      "pss_peak_mib": 65.8037109375,
+      "pss_complete_samples": 50,
+      "steady_samples": 50,
+      "max_process_count": 2,
+      "cpu_seconds": 1.04,
+      "cpu_mean_one_core_percent": 1.762394457194912,
+      "cpu_steady_one_core_percent": 1.3467851329978997,
+      "ui_mapped_from_spawn_ms": 720.765406999737,
+      "ui_first_draw_from_spawn_ms": 736.1684070006013,
+      "load_finished_from_spawn_ms": null,
+      "max_swap_pss_mib": 0.0,
+      "all_sample_pss_readable": true,
+      "window_pixels": [
+        1362,
+        721
+      ],
+      "update_success_events_seconds": [
+        46.549356
+      ],
+      "list_count": 16
+    },
+    {
+      "case": "github",
+      "duration_seconds": 29.02452792800068,
+      "warmup_seconds": 10.0,
+      "rss_peak_mib": 699.4375,
+      "rss_steady_median_mib": 688.21484375,
+      "pss_steady_median_mib": 458.5185546875,
+      "pss_peak_mib": 469.8642578125,
+      "pss_complete_samples": 20,
+      "steady_samples": 20,
+      "max_process_count": 8,
+      "cpu_seconds": 11.92,
+      "cpu_mean_one_core_percent": 41.06871274381859,
+      "cpu_steady_one_core_percent": 0.7893862740142357,
+      "ui_mapped_from_spawn_ms": 1446.6363910008222,
+      "ui_first_draw_from_spawn_ms": 1494.3263910003006,
+      "load_finished_from_spawn_ms": 5365.562391001731,
+      "max_swap_pss_mib": 0.0,
+      "all_sample_pss_readable": true,
+      "window_pixels": [
+        1362,
+        721
+      ]
+    },
+    {
+      "case": "idle",
+      "duration_seconds": 29.013098469999022,
+      "warmup_seconds": 10.0,
+      "rss_peak_mib": 71.6953125,
+      "rss_steady_median_mib": 68.13671875,
+      "pss_steady_median_mib": 43.265625,
+      "pss_peak_mib": 45.1357421875,
+      "pss_complete_samples": 20,
+      "steady_samples": 20,
+      "max_process_count": 1,
+      "cpu_seconds": 0.46,
+      "cpu_mean_one_core_percent": 1.5854907757462127,
+      "cpu_steady_one_core_percent": 0.0,
+      "ui_mapped_from_spawn_ms": 407.92769400030375,
+      "ui_first_draw_from_spawn_ms": 425.25969399884343,
+      "load_finished_from_spawn_ms": null,
+      "max_swap_pss_mib": 0.0,
+      "all_sample_pss_readable": true,
+      "window_pixels": [
+        1362,
+        721
+      ]
+    },
+    {
+      "case": "startup-1",
+      "duration_seconds": 7.009005587000502,
+      "warmup_seconds": 4.0,
+      "rss_peak_mib": 71.78515625,
+      "rss_steady_median_mib": 67.87890625,
+      "pss_steady_median_mib": 43.2412109375,
+      "pss_peak_mib": 45.16796875,
+      "pss_complete_samples": 4,
+      "steady_samples": 4,
+      "max_process_count": 1,
+      "cpu_seconds": 0.45,
+      "cpu_mean_one_core_percent": 6.420311617879265,
+      "cpu_steady_one_core_percent": 2.9996565963131787,
+      "ui_mapped_from_spawn_ms": 672.6537439990789,
+      "ui_first_draw_from_spawn_ms": 691.8887439984828,
+      "load_finished_from_spawn_ms": null,
+      "max_swap_pss_mib": 0.0,
+      "all_sample_pss_readable": true,
+      "window_pixels": [
+        1362,
+        721
+      ]
+    },
+    {
+      "case": "startup-2",
+      "duration_seconds": 7.006069431001379,
+      "warmup_seconds": 4.0,
+      "rss_peak_mib": 71.796875,
+      "rss_steady_median_mib": 69.837890625,
+      "pss_steady_median_mib": 44.19482421875,
+      "pss_peak_mib": 45.1611328125,
+      "pss_complete_samples": 4,
+      "steady_samples": 4,
+      "max_process_count": 1,
+      "cpu_seconds": 0.45,
+      "cpu_mean_one_core_percent": 6.42300229011121,
+      "cpu_steady_one_core_percent": 3.3329574468365193,
+      "ui_mapped_from_spawn_ms": 433.30359400063753,
+      "ui_first_draw_from_spawn_ms": 450.3335940018296,
+      "load_finished_from_spawn_ms": null,
+      "max_swap_pss_mib": 0.0,
+      "all_sample_pss_readable": true,
+      "window_pixels": [
+        1362,
+        721
+      ]
+    },
+    {
+      "case": "startup-3",
+      "duration_seconds": 7.004090862999874,
+      "warmup_seconds": 4.0,
+      "rss_peak_mib": 71.79296875,
+      "rss_steady_median_mib": 69.8359375,
+      "pss_steady_median_mib": 44.21533203125,
+      "pss_peak_mib": 45.1826171875,
+      "pss_complete_samples": 4,
+      "steady_samples": 4,
+      "max_process_count": 1,
+      "cpu_seconds": 0.47,
+      "cpu_mean_one_core_percent": 6.710364117102523,
+      "cpu_steady_one_core_percent": 3.6662392845986256,
+      "ui_mapped_from_spawn_ms": 812.0065729990602,
+      "ui_first_draw_from_spawn_ms": 821.0375729985535,
+      "load_finished_from_spawn_ms": null,
+      "max_swap_pss_mib": 0.0,
+      "all_sample_pss_readable": true,
+      "window_pixels": [
+        1362,
+        721
+      ]
+    },
+    {
+      "case": "youtube-bunny-paused-attempt",
+      "duration_seconds": 89.03375410899935,
+      "warmup_seconds": 55.0,
+      "rss_peak_mib": 1448.375,
+      "rss_steady_median_mib": 1301.80859375,
+      "pss_steady_median_mib": 1056.775390625,
+      "pss_peak_mib": 1203.8193359375,
+      "pss_complete_samples": 35,
+      "steady_samples": 35,
+      "max_process_count": 8,
+      "cpu_seconds": 67.13000000000001,
+      "cpu_mean_one_core_percent": 75.39837073231381,
+      "cpu_steady_one_core_percent": 52.60840936409444,
+      "ui_mapped_from_spawn_ms": 1509.8189779985696,
+      "ui_first_draw_from_spawn_ms": 1563.1969779990613,
+      "load_finished_from_spawn_ms": 16242.020977998152,
+      "max_swap_pss_mib": 0.0,
+      "all_sample_pss_readable": true,
+      "window_pixels": [
+        1362,
+        721
+      ],
+      "last_video_probe": {
+        "url": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+        "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film - YouTube",
+        "ready": "complete",
+        "video": [
+          {
+            "time": 0,
+            "duration": null,
+            "paused": true,
+            "ready": 0,
+            "width": 0,
+            "height": 0,
+            "frames": 0,
+            "dropped": 0
+          }
+        ],
+        "ad": false,
+        "playability": "OK"
+      },
+      "ad_showing_probe_count": 0,
+      "ad_metadata": {
+        "videoId": "aqz-KE-bpKQ",
+        "initialAds": {
+          "placements": 0,
+          "slots": 0,
+          "playerAds": 0
+        },
+        "playerAds": {
+          "placements": 0,
+          "slots": 0,
+          "playerAds": 0
+        }
+      },
+      "steady_video_probe_count": 7,
+      "steady_paused_probe_count": 7,
+      "steady_video_sizes": [
+        [
+          0,
+          0
+        ]
+      ],
+      "blocked_request_count": 17,
+      "advertising_endpoints_blocked": [
+        "https://googleads.g.doubleclick.net/pagead/id",
+        "https://static.doubleclick.net/instream/ad_status.js"
+      ],
+      "valid_playback_measurement": false
+    },
+    {
+      "case": "youtube-off",
+      "duration_seconds": 119.04987629399875,
+      "warmup_seconds": 60.0,
+      "rss_peak_mib": 1282.34375,
+      "rss_steady_median_mib": 1267.771484375,
+      "pss_steady_median_mib": 1022.2978515625,
+      "pss_peak_mib": 1039.4404296875,
+      "pss_complete_samples": 60,
+      "steady_samples": 60,
+      "max_process_count": 14,
+      "cpu_seconds": 86.46,
+      "cpu_mean_one_core_percent": 72.6250229664106,
+      "cpu_steady_one_core_percent": 61.61440847613281,
+      "ui_mapped_from_spawn_ms": 1703.6306219995022,
+      "ui_first_draw_from_spawn_ms": 1771.0546220000833,
+      "load_finished_from_spawn_ms": 17813.5206220001,
+      "max_swap_pss_mib": 0.0,
+      "all_sample_pss_readable": true,
+      "window_pixels": [
+        1362,
+        721
+      ],
+      "last_video_probe": {
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster) - YouTube",
+        "ready": "complete",
+        "video": [
+          {
+            "time": 71.543658,
+            "duration": 213.061,
+            "paused": false,
+            "ready": 4,
+            "width": 640,
+            "height": 360,
+            "frames": 1789,
+            "dropped": 0
+          }
+        ],
+        "ad": false,
+        "playability": "OK"
+      },
+      "ad_showing_probe_count": 0,
+      "ad_metadata": {
+        "videoId": "dQw4w9WgXcQ",
+        "initialAds": {
+          "placements": 2,
+          "slots": 0,
+          "playerAds": 1
+        },
+        "playerAds": {
+          "placements": 2,
+          "slots": 0,
+          "playerAds": 1
+        }
+      },
+      "steady_video_probe_count": 12,
+      "steady_paused_probe_count": 0,
+      "steady_video_sizes": [
+        [
+          640,
+          360
+        ]
+      ],
+      "blocked_request_count": 0,
+      "advertising_endpoints_blocked": [],
+      "valid_playback_measurement": true
+    },
+    {
+      "case": "youtube-on",
+      "duration_seconds": 119.07505271599985,
+      "warmup_seconds": 60.0,
+      "rss_peak_mib": 1375.21484375,
+      "rss_steady_median_mib": 1260.1484375,
+      "pss_steady_median_mib": 1015.578125,
+      "pss_peak_mib": 1133.208984375,
+      "pss_complete_samples": 60,
+      "steady_samples": 60,
+      "max_process_count": 8,
+      "cpu_seconds": 101.64999999999999,
+      "cpu_mean_one_core_percent": 85.3663279431339,
+      "cpu_steady_one_core_percent": 73.66291885525837,
+      "ui_mapped_from_spawn_ms": 959.2558309994638,
+      "ui_first_draw_from_spawn_ms": 996.8918309994042,
+      "load_finished_from_spawn_ms": 15200.433830998838,
+      "max_swap_pss_mib": 0.0,
+      "all_sample_pss_readable": true,
+      "window_pixels": [
+        1362,
+        721
+      ],
+      "last_video_probe": {
+        "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+        "title": "Rick Astley - Never Gonna Give You Up (Official Video) (4K Remaster) - YouTube",
+        "ready": "complete",
+        "video": [
+          {
+            "time": 70.860432,
+            "duration": 213.061,
+            "paused": false,
+            "ready": 4,
+            "width": 640,
+            "height": 360,
+            "frames": 1772,
+            "dropped": 0
+          }
+        ],
+        "ad": false,
+        "playability": "OK"
+      },
+      "ad_showing_probe_count": 0,
+      "ad_metadata": {
+        "videoId": "dQw4w9WgXcQ",
+        "initialAds": {
+          "placements": 0,
+          "slots": 0,
+          "playerAds": 0
+        },
+        "playerAds": {
+          "placements": 0,
+          "slots": 0,
+          "playerAds": 0
+        }
+      },
+      "steady_video_probe_count": 12,
+      "steady_paused_probe_count": 0,
+      "steady_video_sizes": [
+        [
+          640,
+          360
+        ]
+      ],
+      "blocked_request_count": 22,
+      "advertising_endpoints_blocked": [
+        "https://googleads.g.doubleclick.net/pagead/id",
+        "https://static.doubleclick.net/instream/ad_status.js"
+      ],
+      "valid_playback_measurement": true
+    },
+    {
+      "display": ":0",
+      "kernel": "6.12.113+deb13-amd64",
+      "machine": "x86_64",
+      "logical_cpus": 2,
+      "duration_seconds": 89.07969614300055,
+      "warmup_seconds": 55.0,
+      "interval_seconds": 1,
+      "rss_peak_mib": 1345.20703125,
+      "rss_steady_median_mib": 1266.5390625,
+      "pss_steady_median_mib": 1021.92578125,
+      "pss_peak_mib": 1102.9775390625,
+      "pss_complete_samples": 35,
+      "steady_samples": 35,
+      "max_process_count": 8,
+      "cpu_seconds": 76.65,
+      "cpu_mean_one_core_percent": 86.04654407100017,
+      "cpu_steady_one_core_percent": 68.28882739167128,
+      "ui_mapped_from_spawn_ms": 984.520875999704,
+      "ui_first_draw_from_spawn_ms": 1016.414875999093,
+      "load_committed_from_spawn_ms": 2934.256875999272,
+      "load_finished_from_spawn_ms": 14124.210875999182,
+      "case": "youtube-bunny",
+      "valid_playback_measurement": true,
+      "last_video_probe": {
+        "url": "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+        "title": "Big Buck Bunny 60fps 4K - Official Blender Foundation Short Film - YouTube",
+        "ready": "complete",
+        "video": [
+          {
+            "time": 40.827476,
+            "duration": 634.592,
+            "paused": false,
+            "ready": 4,
+            "width": 640,
+            "height": 360,
+            "frames": 1225,
+            "dropped": 0
+          }
+        ],
+        "ad": false,
+        "playability": "OK"
+      },
+      "ad_metadata": {
+        "videoId": "aqz-KE-bpKQ",
+        "initialAds": {
+          "placements": 0,
+          "slots": 0,
+          "playerAds": 0
+        },
+        "playerAds": {
+          "placements": 0,
+          "slots": 0,
+          "playerAds": 0
+        }
+      },
+      "steady_video_probe_count": 7,
+      "steady_paused_probe_count": 0,
+      "steady_video_sizes": [
+        [
+          640,
+          360
+        ]
+      ],
+      "ad_showing_probe_count": 0,
+      "blocked_request_count": 29,
+      "max_swap_pss_mib": 0.0,
+      "all_sample_pss_readable": true,
+      "window_pixels": [
+        1362,
+        721
+      ]
+    }
+  ],
+  "startup_first_draw_median_ms": 691.8887439984828,
+  "startup_first_draw_range_ms": [
+    450.3335940018296,
+    821.0375729985535
+  ],
+  "youtube_conclusion": "Playback, frame progression, real advertising request blocking and player ad-data pruning verified. Video pre-roll/mid-roll suppression is inconclusive because the unblocked control also did not display a video ad.",
+  "limitations": [
+    "One machine; no ranking against other browsers.",
+    "Fresh application profiles, warm system caches; only startup has three repetitions.",
+    "CPU includes browser session and descendants, not shared Xorg/PipeWire services, unrelated apps or the sampler.",
+    "One-second samples can miss very short-lived helper processes.",
+    "PSS does not cover all kernel/GPU allocations."
+  ],
+  "notes": [
+    "The first Big Buck Bunny attempt remained paused after the test driver changed quality and replaced the media element. It is retained and excluded from playback performance results. The repeat uses the player playVideo controller in addition to HTMLMediaElement.play; browser code was unchanged."
+  ],
+  "binary_sha256": {
+    "bin/babinium-browser": "74537a2b0de03aa64586b47e73090bb182c6088125cd6811e1aa3a3dd46209af",
+    "lib/babinium-browser/libbabinium-adblock.so": "439ff680fc3ddc1fa6bb4c5f69bc4f00c198cc0123337ba781b41acb9c0f4f09",
+    "bin/babinium-filter": "e71bb1ae3cb73f759329eb24ea88e6300ff1ca223f3e2f30e3f68b61d6ae3df3"
+  }
+}

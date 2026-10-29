@@ -58,11 +58,17 @@ def run(binary,output):
                     key('ctrl+b');wait_for(lambda:(profile/'disabled-sites').exists() and '127.0.0.1' in (profile/'disabled-sites').read_text())
                     key('ctrl+b');wait_for(lambda:'127.0.0.1' not in (profile/'disabled-sites').read_text())
                     key('ctrl+w');wait_for(lambda:'Fixture /second' in title())
+                    key('ctrl+l');subprocess.run(['xdotool','type','--clearmodifiers','--window',wid,'--delay','1',url+'/third'],check=True,timeout=5);key('Return')
+                    wait_for(lambda:'Fixture /third' in title())
+                    key('alt+Left');wait_for(lambda:'Fixture /second' in title())
+                    key('alt+Right');wait_for(lambda:'Fixture /third' in title())
+                    time.sleep(.2);loads=sum(e['event']=='load_finished' for e in events());key('ctrl+r')
+                    wait_for(lambda:sum(e['event']=='load_finished' for e in events())>loads)
                     key('ctrl+l');subprocess.run(['xdotool','type','--clearmodifiers','--window',wid,'--delay','1',url+'/download'],check=True,timeout=5);key('Return')
                     wait_for(lambda:(downloads/'fixture.txt').exists())
                     assert (downloads/'fixture.txt').read_bytes()==b'Babinium verified download\n'
                     wait_for(lambda:(output/'ui.png').exists(),timeout=15)
-                    print('Native GTK tabs, tab closing, site toggle, and download: passed',flush=True)
+                    print('Native GTK lazy tabs, tab closing, back/forward/reload, site toggle, and download: passed',flush=True)
                 finally:
                     p.terminate();p.wait(timeout=10)
     finally:server.shutdown()
