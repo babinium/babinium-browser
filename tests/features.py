@@ -36,10 +36,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 const read=store.get('key');read.onsuccess=()=>window.bbIndexed=read.result;}};'''
         script+="window.addEventListener('message',e=>{if(e.data==='bb-popup-ok')document.title='Opener confirmed';});"
         if self.path=='/popup-result':script+="window.opener?.postMessage('bb-popup-ok',location.origin);"
-        html=f'''<!doctype html><title>{title}</title><body style="background:white;color:black">
+        background='#111' if self.path in ('/native-dark','/mixed') else 'white'
+        foreground='white' if background=='#111' else 'black'
+        mixed='<div id="bright" style="position:fixed;left:40%;top:40%;width:20%;height:20%;background:white;color:black">Light panel</div>' if self.path=='/mixed' else ''
+        html=f'''<!doctype html><title>{title}</title><body style="background:{background};color:{foreground}">
             <p id="content">Normal site content</p><script>{script}</script>
             <button style="position:fixed;top:120px;left:120px;padding:20px" onclick="window.open('/popup-result','bb-popup')">Open popup</button>
-            </body>'''
+            {mixed}</body>'''
         self.wfile.write(html.encode())
 
 def wait_for(fn,timeout=15):
@@ -82,7 +85,11 @@ def run(binary,output):
             (profile/'light-sites').write_text('127.0.0.1\n')
             light=evaluate(binary,profile,url+'/check',check,output,'light')
             assert light['background']=='rgb(255, 255, 255)' and light['darkStyles']==0,light
-            print('Cookie, localStorage and IndexedDB across clean restarts; Dark Reader and site exception: passed',flush=True)
+            native=evaluate(binary,temp/'native-profile',url+'/native-dark',check,output,'native')
+            assert native['background']=='rgb(17, 17, 17)' and native['darkStyles']==0,native
+            mixed=evaluate(binary,temp/'mixed-profile',url+'/mixed',check,output,'mixed')
+            assert mixed['darkStyles']>0,mixed
+            print('Cookie, localStorage and IndexedDB across clean restarts; dark pages, light exception and native-dark detection: passed',flush=True)
 
             # A blank tab is painted black before WebKit is started.
             blank=output/'blank.png';log=output/'blank.jsonl'

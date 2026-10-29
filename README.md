@@ -18,8 +18,10 @@ pedidos y los puntos que todavía requieren pruebas.
   persistentes entre reinicios.
 - Modo oscuro predeterminado con la API local de Dark Reader; el botón Oscuro
   permite excluir un sitio. YouTube usa su propio tema oscuro cuando está
-  disponible. La integración API no incluye todas las correcciones de la
-  extensión de escritorio y respeta las restricciones CORS de la página.
+  disponible. Cuando el fondo y varios puntos visibles ya son oscuros se evita
+  transformar la página; es una heurística inicial, no detección perfecta. La
+  integración API no incluye todas las correcciones de la extensión de
+  escritorio y respeta las restricciones CORS de la página.
 - Bloqueo de solicitudes, CSS específico y genérico, scriptlets uBO/Brave.
 - Bloqueo activado por defecto y excepciones por hostname exacto con Ctrl+B.
 - EasyList, EasyPrivacy y filtros de uAssets incluidos; actualizaciones HTTPS

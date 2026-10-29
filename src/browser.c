@@ -276,17 +276,18 @@ static GtkWidget *button(const char *label,GCallback cb,gpointer data){GtkWidget
 static void install_scripts(void){
     if(!content)return;
     static char *dark_js,*youtube_js;
+    static const char *youtube_uris[]={"http://youtube.com/*","https://youtube.com/*","http://*.youtube.com/*","https://*.youtube.com/*",NULL};
     if(!dark_js){char *path=g_build_filename(data_dir,"darkreader.js",NULL);if(!g_file_get_contents(path,&dark_js,NULL,NULL))g_warning("Falta Dark Reader: %s",path);g_free(path);}
     if(!youtube_js){char *path=g_build_filename(data_dir,"youtube.js",NULL);if(!g_file_get_contents(path,&youtube_js,NULL,NULL))g_warning("Falta la preferencia de YouTube: %s",path);g_free(path);}
     webkit_user_content_manager_remove_all_scripts(content);
     if(dark_js){
         JsonBuilder *b=json_builder_new();json_builder_begin_array(b);GHashTableIter it;gpointer key;g_hash_table_iter_init(&it,light_sites);while(g_hash_table_iter_next(&it,&key,NULL))json_builder_add_string_value(b,key);json_builder_end_array(b);
         JsonNode *node=json_builder_get_root(b);JsonGenerator *gen=json_generator_new();json_generator_set_root(gen,node);char *list=json_generator_to_data(gen,NULL);
-        char *script=g_strdup_printf("(function(){let host=location.hostname;try{host=window.top.location.hostname;}catch(e){try{if(document.referrer)host=new URL(document.referrer).hostname;}catch(_){}}if(%s.includes(host)||/(^|\\.)youtube\\.com$/.test(host))return;\n%s\nDarkReader.enable({brightness:100,contrast:100,sepia:0});})();",list,dark_js);
-        WebKitUserScript *u=webkit_user_script_new_for_world(script,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_END,"babinium-dark",NULL,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);
+        char *script=g_strdup_printf("(function(){let host=location.hostname;try{host=window.top.location.hostname;}catch(e){try{if(document.referrer)host=new URL(document.referrer).hostname;}catch(_){}}if(%s.includes(host)||/(^|\\.)youtube\\.com$/.test(host))return;try{const bg=e=>{for(;e;e=e.parentElement){const p=getComputedStyle(e).backgroundColor.match(/[\\d.]+/g);if(p&&p.length>=3&&(p.length<4||Number(p[3])>=0.95))return 0.2126*Number(p[0])+0.7152*Number(p[1])+0.0722*Number(p[2]);}return 255;};const points=[[.1,.1],[.5,.2],[.5,.5],[.2,.85],[.8,.85]];if(document.body&&bg(document.body)<60&&points.every(([x,y])=>bg(document.elementFromPoint(innerWidth*x,innerHeight*y)||document.body)<60))return;}catch(_){}\n%s\nDarkReader.enable({brightness:100,contrast:100,sepia:0});})();",list,dark_js);
+        WebKitUserScript *u=webkit_user_script_new_for_world(script,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_END,"babinium-dark",NULL,youtube_uris);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);
         g_free(script);g_free(list);json_node_free(node);g_object_unref(gen);g_object_unref(b);
     }
-    if(youtube_js){WebKitUserScript *u=webkit_user_script_new(youtube_js,WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,NULL,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
+    if(youtube_js){WebKitUserScript *u=webkit_user_script_new(youtube_js,WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,youtube_uris,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
 }
 static void extension_data(WebKitWebContext *ctx){
     char *res=g_build_filename(data_dir,"resources.json",NULL),*js=g_build_filename(data_dir,"cosmetic.js",NULL),*sites=sites_text();
