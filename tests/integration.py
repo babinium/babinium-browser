@@ -17,12 +17,13 @@ class Handler(http.server.BaseHTTPRequestHandler):
         seen.append(self.path)
         self.send_response(200)
         if self.path.endswith('.js'):
-            self.send_header('Content-Type','text/javascript');body=b'window.requestExecuted=true;'
+            self.send_header('Content-Type','text/javascript');body=b'window.redirectOriginal=true;' if self.path=='/redirect-me.js' else b'window.requestExecuted=true;'
         else:
             self.send_header('Content-Type','text/html')
             body=b'''<!doctype html><title>Babinium fixture</title>
             <script>window.fixtureConstant=false;</script>
             <script src="/blocked-ad.js"></script><script src="/allowed-ad.js"></script>
+            <script src="/redirect-me.js" onload="window.redirectLoaded=true"></script>
             <div class="bb-specific">Specific ad</div><div class="bb-except">Excepted content</div>
             <div id="bb-procedural">Sponsored item</div><div id="content">Actual content</div>
             <script>setTimeout(()=>{const d=document.createElement('div');d.className='bb-generic';d.textContent='Dynamic generic ad';document.body.append(d);},500);</script>'''
@@ -34,7 +35,7 @@ def run(binary,compiler,output):
     try:
         with tempfile.TemporaryDirectory(prefix='bb-integration-') as tmp:
             tmp=Path(tmp);script=tmp/'check.js'
-            script.write_text("JSON.stringify({scriptlet:window.fixtureConstant,specific:getComputedStyle(document.querySelector('.bb-specific')).display,generic:getComputedStyle(document.querySelector('.bb-generic')).display,excepted:getComputedStyle(document.querySelector('.bb-except')).display,procedural:!!document.getElementById('bb-procedural'),content:document.getElementById('content').textContent})")
+            script.write_text("JSON.stringify({scriptlet:window.fixtureConstant,specific:getComputedStyle(document.querySelector('.bb-specific')).display,generic:getComputedStyle(document.querySelector('.bb-generic')).display,excepted:getComputedStyle(document.querySelector('.bb-except')).display,procedural:!!document.getElementById('bb-procedural'),redirectLoaded:!!window.redirectLoaded,redirectOriginal:!!window.redirectOriginal,content:document.getElementById('content').textContent})")
             for enabled in [True,False]:
                 seen.clear();profile=tmp/('enabled' if enabled else 'disabled');current=profile/'filters/current';current.mkdir(parents=True)
                 subprocess.run([str(compiler),'compile',str(Path(__file__).parent/'fixture-lists'),str(current/'engine.bin')],check=True)
@@ -51,6 +52,8 @@ def run(binary,compiler,output):
                 assert value['content']=='Actual content',value
                 assert '/allowed-ad.js' in seen,seen
                 assert ('/blocked-ad.js' not in seen)==enabled,seen
+                assert ('/redirect-me.js' not in seen)==enabled,seen
+                assert value['redirectLoaded'] and (value['redirectOriginal'] is not enabled),value
                 assert value['scriptlet'] is enabled,value
                 assert (value['specific']=='none')==enabled,value
                 assert (value['generic']=='none')==enabled,value

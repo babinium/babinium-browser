@@ -8,3 +8,4 @@
 127.0.0.1#@#.bb-except
 127.0.0.1###bb-procedural:has-text(Sponsored):remove()
 127.0.0.1##+js(set-constant, fixtureConstant, true)
+/redirect-me.js$script,domain=127.0.0.1,redirect=noop.js
