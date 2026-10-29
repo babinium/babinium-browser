@@ -46,7 +46,7 @@ el mismo perfil. Descargas en la carpeta Descargas del usuario, sin sobrescribir
 Atajos: Ctrl+L dirección, Ctrl+T pestaña, Ctrl+W cerrar, Ctrl+Tab cambiar,
 Ctrl+1…9 seleccionar, Ctrl+R recargar, Ctrl+Shift+R sin caché, Alt+flechas navegar,
 Ctrl+B bloqueo por sitio, Ctrl+D guardar/quitar favorito, Ctrl+Shift+D favoritos,
-Ctrl+J descargas. El panel de descargas permite forzar
+Ctrl+Shift+M modo oscuro por sitio, Ctrl+J descargas. El panel de descargas permite forzar
 la actualización de listas. Cambiar el bloqueo recarga la pestaña; otras pestañas
 del mismo hostname aplican la decisión de red inmediatamente y necesitan recarga
 para retirar los scriptlets ya ejecutados.
@@ -55,12 +55,14 @@ seguimiento; no es un contador de anuncios de vídeo.
 
 YouTube recibe una preferencia inicial de 360p mediante un método interno del
 reproductor, que YouTube puede cambiar o ignorar. El usuario puede elegir otra
-calidad en el reproductor. No se fuerza un códec: WebKit y GStreamer seleccionan
-entre los disponibles y pueden utilizar decodificación por hardware si está
-configurada. La mejor opción depende de los decodificadores realmente disponibles;
-obligar H.264, VP9 o AV1 en todos los equipos podría aumentar el consumo o impedir
-reproducir algunos vídeos. La persistencia del perfil no garantiza que Google
-acepte iniciar sesión en todos los navegadores integrados.
+calidad en el reproductor. El navegador consulta `MediaCapabilities` para 360p:
+si informa que H.264 es fluido y eficiente, y que VP9 o AV1 no lo son, prioriza
+H.264 para ese sitio. En los demás casos mantiene la elección normal del motor.
+Si un vídeo no ofrece H.264 o falla el elemento de vídeo, reintenta una vez con
+la negociación normal. WebKit/GStreamer pueden utilizar decodificación por
+hardware si está configurada, pero las capacidades informadas no garantizan un
+menor consumo. La persistencia del perfil no garantiza que Google acepte iniciar
+sesión en todos los navegadores integrados.
 
 ## Arquitectura y límites
 

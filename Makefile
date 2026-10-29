@@ -35,6 +35,7 @@ resources: all
 test: all
 	cd blocker && cargo test --release --locked
 	python3 -m unittest discover -s tests -p 'test_*.py' -v
+	node --test tests/test-youtube.js
 
 package:
 	bash packaging/package.sh
