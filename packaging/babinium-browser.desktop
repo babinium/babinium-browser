@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Babinium Browser
+Comment=Navegador mínimo con bloqueo nativo de anuncios
+Exec=babinium-browser %U
+Icon=babinium-browser
+Terminal=false
+Type=Application
+Categories=Network;WebBrowser;
+MimeType=text/html;x-scheme-handler/http;x-scheme-handler/https;
+StartupWMClass=BabiniumBrowser

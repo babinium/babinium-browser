@@ -1,0 +1,16 @@
+[
+  {"file":"easylist.txt","url":"https://easylist.to/easylist/easylist.txt"},
+  {"file":"easyprivacy.txt","url":"https://easylist.to/easylist/easyprivacy.txt"},
+  {"file":"ubo-filters.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt"},
+  {"file":"ubo-2020.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2020.txt"},
+  {"file":"ubo-2021.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2021.txt"},
+  {"file":"ubo-2022.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2022.txt"},
+  {"file":"ubo-2023.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2023.txt"},
+  {"file":"ubo-2024.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2024.txt"},
+  {"file":"ubo-2025.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2025.txt"},
+  {"file":"ubo-2026.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-2026.txt"},
+  {"file":"ubo-general.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters-general.txt"},
+  {"file":"ubo-quick-fixes.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/quick-fixes.txt"},
+  {"file":"ubo-unbreak.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/unbreak.txt"},
+  {"file":"ubo-privacy.txt","url":"https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/privacy.txt"}
+]
