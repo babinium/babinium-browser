@@ -9,8 +9,17 @@ Se validaron reproducción real de YouTube, bloqueo de solicitudes publicitarias
 y modificación de datos del reproductor. La eliminación de preroll/midroll no
 quedó demostrada porque el control tampoco mostró anuncios de vídeo.
 Véase el [informe de validación y consumo](docs/validation.md).
+La [lista de requisitos y su estado](docs/REQUISITOS.md) conserva todos los
+pedidos y los puntos que todavía requieren pruebas.
 
-- Barra de direcciones y búsqueda, atrás/adelante, pestañas y descargas.
+- Barra de direcciones con búsqueda Google, atrás/adelante, pestañas y descargas.
+- Pestañas vacías negras y «Babinium» en el extremo derecho de la barra.
+- Favoritos en el perfil, con estrella y panel; cookies y datos de sitios
+  persistentes entre reinicios.
+- Modo oscuro predeterminado con la API local de Dark Reader; el botón Oscuro
+  permite excluir un sitio. YouTube usa su propio tema oscuro cuando está
+  disponible. La integración API no incluye todas las correcciones de la
+  extensión de escritorio y respeta las restricciones CORS de la página.
 - Bloqueo de solicitudes, CSS específico y genérico, scriptlets uBO/Brave.
 - Bloqueo activado por defecto y excepciones por hostname exacto con Ctrl+B.
 - EasyList, EasyPrivacy y filtros de uAssets incluidos; actualizaciones HTTPS
@@ -27,7 +36,7 @@ instalar. Para el bundle se necesitan las dependencias de ejecución del paquete
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.1.0_amd64.deb
+sudo apt install ./babinium-browser_0.2.0_amd64.deb
 ```
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
@@ -36,12 +45,22 @@ el mismo perfil. Descargas en la carpeta Descargas del usuario, sin sobrescribir
 
 Atajos: Ctrl+L dirección, Ctrl+T pestaña, Ctrl+W cerrar, Ctrl+Tab cambiar,
 Ctrl+1…9 seleccionar, Ctrl+R recargar, Ctrl+Shift+R sin caché, Alt+flechas navegar,
-Ctrl+B bloqueo por sitio, Ctrl+D descargas. El panel de descargas permite forzar
+Ctrl+B bloqueo por sitio, Ctrl+D guardar/quitar favorito, Ctrl+Shift+D favoritos,
+Ctrl+J descargas. El panel de descargas permite forzar
 la actualización de listas. Cambiar el bloqueo recarga la pestaña; otras pestañas
 del mismo hostname aplican la decisión de red inmediatamente y necesitan recarga
 para retirar los scriptlets ya ejecutados.
 El contador muestra solicitudes bloqueadas acumuladas en la pestaña, incluyendo
 seguimiento; no es un contador de anuncios de vídeo.
+
+YouTube recibe una preferencia inicial de 360p mediante un método interno del
+reproductor, que YouTube puede cambiar o ignorar. El usuario puede elegir otra
+calidad en el reproductor. No se fuerza un códec: WebKit y GStreamer seleccionan
+entre los disponibles y pueden utilizar decodificación por hardware si está
+configurada. La mejor opción depende de los decodificadores realmente disponibles;
+obligar H.264, VP9 o AV1 en todos los equipos podría aumentar el consumo o impedir
+reproducir algunos vídeos. La persistencia del perfil no garantiza que Google
+acepte iniciar sesión en todos los navegadores integrados.
 
 ## Arquitectura y límites
 

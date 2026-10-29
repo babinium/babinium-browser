@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Build-time download of pinned, auditable upstream sources."""
 import json
+import hashlib
 import subprocess
 import sys
 import tarfile
@@ -15,6 +16,16 @@ updater=importlib.util.module_from_spec(spec);spec.loader.exec_module(updater)
 pins=json.loads((ROOT/'data/upstream.json').read_text())
 out=ROOT/'build/share/babinium-browser';out.mkdir(parents=True,exist_ok=True)
 up=ROOT/'build/upstream';up.mkdir(parents=True,exist_ok=True)
+# Pin the published API bundle and retain its license and exact source archive.
+dark=up/'darkreader.tar.gz'
+urllib.request.urlretrieve('https://registry.npmjs.org/darkreader/-/darkreader-4.9.134.tgz',dark)
+if hashlib.sha256(dark.read_bytes()).hexdigest()!='e3da6d984ffa830229c31f531fc9f0666910549ff74655c022bb411c70d47745':
+    raise ValueError('Dark Reader archive hash mismatch')
+with tarfile.open(dark) as t:
+    for source,target in [('package/darkreader.js','darkreader.js'),('package/LICENSE','darkreader-LICENSE')]:
+        member=t.getmember(source)
+        if not member.isfile():raise ValueError('Invalid Dark Reader archive')
+        (out/target).write_bytes(t.extractfile(member).read())
 for name,repo in [('ubo','gorhill/uBlock'),('brave','brave/adblock-resources')]:
     archive=up/(name+'.tar.gz')
     urllib.request.urlretrieve(f'https://codeload.github.com/{repo}/tar.gz/{pins[name]}',archive)

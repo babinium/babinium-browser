@@ -11,6 +11,9 @@
   y sus avisos se conservan en `upstream-sources.tar.gz` del artefacto.
 - [Brave adblock-resources](https://github.com/brave/adblock-resources),
   MPL-2.0, revisión fija en `data/upstream.json`; recursos sin modificación.
+- [Dark Reader](https://github.com/darkreader/darkreader), versión 4.9.134,
+  licencia MIT: API integrada como script local, con archivo original y licencia
+  incluidos. SHA-256 del paquete npm: `e3da6d984ffa830229c31f531fc9f0666910549ff74655c022bb411c70d47745`.
 - [EasyList/EasyPrivacy](https://easylist.to/) y
   [uAssets](https://github.com/uBlockOrigin/uAssets): se conservan las cabeceras
   con autoría/licencia en cada lista de `share/babinium-browser/lists/`.

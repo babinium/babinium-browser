@@ -18,5 +18,6 @@ for package in sorted(metadata['packages'],key=lambda p:p['name']):
 for name in ['ubo','brave']:
     path=root/'build/upstream'/name/'LICENSE'
     if path.exists():notices.append(f'\nUpstream resource project: {name}\n'+path.read_text()+'\n')
+notices.append('\nDark Reader 4.9.134 (MIT)\n'+(root/'build/share/babinium-browser/darkreader-LICENSE').read_text()+'\n')
 output=root/'build/share/babinium-browser/THIRD_PARTY_NOTICES.txt'
 output.write_text(''.join(notices))
