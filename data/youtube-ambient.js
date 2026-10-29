@@ -4,7 +4,7 @@
     if (!/(^|\.)youtube\.com$/.test(location.hostname) || window !== window.top) return;
     const key='babinium-ambient-default-v1';
     try { if(localStorage.getItem(key)==='1') return; } catch (_) { return; }
-    let timer=null, attempts=0, busy=false, menu=null, previous='', previousPriority='', finished=false;
+    let timer=null, attempts=0, adAttempts=0, busy=false, menu=null, previous='', previousPriority='', finished=false;
     function restore(){
         if(!menu)return;
         if(previous)menu.style.setProperty('visibility',previous,previousPriority);
@@ -25,6 +25,12 @@
     }
     function attempt(){
         if(finished||busy)return;
+        // A preroll is not the content video. Wait for it to finish instead of
+        // mistaking its player state for the user's ambient-mode preference.
+        if(document.querySelector('.html5-video-player.ad-showing,.html5-video-player.ad-interrupting')){
+            if(++adAttempts>=180){clearInterval(timer);timer=null;}
+            return;
+        }
         if(++attempts>40){clearInterval(timer);timer=null;return;}
         const video=document.querySelector('video'),panel=document.querySelector('ytd-watch-flexy,ytd-watch-grid');
         if(!video||video.paused||video.currentTime<.5||!panel)return;
@@ -50,7 +56,7 @@
             },150);
         },100);
     }
-    function start(){if(finished||timer)return;attempts=0;timer=setInterval(attempt,500);}
+    function start(){if(finished||timer)return;attempts=0;adAttempts=0;timer=setInterval(attempt,500);}
     function play(event){if(event.target?.tagName==='VIDEO')start();}
     function navigate(){const video=document.querySelector('video');if(video&&!video.paused)start();}
     document.addEventListener('pointerdown',user,true);

@@ -6,8 +6,8 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const code=fs.readFileSync('data/youtube-ambient.js','utf8');
 
-function fixture({active=true,label='Ambient mode',saved=false,host='www.youtube.com'}={}) {
-    const listeners=new Map(),intervals=new Map(),timers=[],storage=new Map(),result={active,menuOpen:false,clicks:0};
+function fixture({active=true,label='Ambient mode',saved=false,host='www.youtube.com',ad=false}={}) {
+    const listeners=new Map(),intervals=new Map(),timers=[],storage=new Map(),result={active,ad,menuOpen:false,clicks:0};
     if(saved)storage.set('babinium-ambient-default-v1','1');
     let id=0,visibility='',priority='';
     const video={tagName:'VIDEO',paused:false,currentTime:2};
@@ -18,7 +18,7 @@ function fixture({active=true,label='Ambient mode',saved=false,host='www.youtube
             setProperty:(key,value,p)=>{visibility=value;priority=p;},removeProperty:()=>{visibility='';priority='';}}};
     const gear={click:()=>{result.menuOpen=!result.menuOpen;}};
     const document={readyState:'complete',addEventListener:(key,fn)=>listeners.set(key,fn),removeEventListener:key=>listeners.delete(key),
-        querySelector:s=>s==='video'?video:s==='ytd-watch-flexy,ytd-watch-grid'?panel:s==='.ytp-settings-button'?gear:s==='.ytp-settings-menu'?menu:null};
+        querySelector:s=>s==='video'?video:s==='ytd-watch-flexy,ytd-watch-grid'?panel:s==='.ytp-settings-button'?gear:s==='.ytp-settings-menu'?menu:s==='.html5-video-player.ad-showing,.html5-video-player.ad-interrupting'&&result.ad?{}:null};
     const context={document,location:{hostname:host},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},
         setInterval:fn=>{intervals.set(++id,fn);return id;},clearInterval:i=>intervals.delete(i),setTimeout:fn=>timers.push(fn),
         getComputedStyle:()=>({visibility:'visible'})};
@@ -48,4 +48,8 @@ test('leaves an unrecognized menu untouched and does not leave it hidden',()=>{
 });
 test('does nothing on unrelated websites',()=>{
     const f=fixture({host:'example.org'});f.step();assert.equal(f.clicks,0);assert.equal(f.intervals.size,0);
+});
+test('waits until a preroll ends before deciding the default',()=>{
+    const f=fixture({ad:true});f.step();assert.equal(f.clicks,0);assert.equal(f.storage.has('babinium-ambient-default-v1'),false);
+    f.ad=false;f.step();assert.equal(f.clicks,1);assert.equal(f.active,false);
 });
