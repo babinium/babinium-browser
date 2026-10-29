@@ -22,7 +22,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             videoId:'M7lc1UVf-VE',playerVars:{{autoplay:1,mute:1,origin:'http://127.0.0.1:{self.server.server_port}'}},
             events:{{onReady:()=>{{ready=true;p.mute();p.playVideo();}},onError:e=>{{error=e.data;}}}}}});}}
         setInterval(()=>{{let e=document.querySelector('iframe'),r=e?.getBoundingClientRect();
-            document.title='BBEMBED:'+btoa(JSON.stringify({{ready,error,rate:ready?p.getPlaybackRate():null,time:ready?p.getCurrentTime():null,state:ready?p.getPlayerState():null,
+            document.title='BBEMBED:'+btoa(JSON.stringify({{ready,error,observedMs:performance.now(),rate:ready?p.getPlaybackRate():null,time:ready?p.getCurrentTime():null,state:ready?p.getPlayerState():null,
                 src:e?.src,viewport:[innerWidth,innerHeight],rect:r?{{x:r.x,y:r.y,w:r.width,h:r.height}}:null}}));}},500);
         </script>'''.encode()
         self.send_response(200);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Content-Length',str(len(page)));self.end_headers();self.wfile.write(page)
@@ -59,12 +59,22 @@ try:
             # cannot make the test mistake a paused video for a playing one.
             paused=wait(lambda x:x.get('state')==2,seconds=6)
             key('space');wait(lambda x:x.get('state')==1 and x.get('time',0)>paused['time']+.5)
-            key('d');changed=wait(lambda x:abs(x.get('rate',0)-1.1)<.001)
-            time.sleep(3);stable=state();assert abs(stable['rate']-1.1)<.001,stable
+            key('d');time.sleep(1);changed=state()
+            time.sleep(3);stable=state()
             assert stable['state']==1 and stable['time']-changed['time']>1,stable
-            key('r');final=wait(lambda x:abs(x.get('rate',0)-1)<.001)
-            (out/'result.json').write_text(json.dumps({'initial':s,'changed':changed,'stable':stable,'final':final},indent=2)+'\n')
-            print(json.dumps({'source':s['src'].split('/embed/')[0],'rate':changed['rate'],'stable_after_3s':stable['rate'],'reset':final['rate']}),flush=True)
+            # Measure actual playback progress, independent of YouTube's
+            # own rate menu/API, which can report a different rate.
+            key('g');time.sleep(1);fast_start=state();time.sleep(4);fast_end=state()
+            elapsed=(fast_end['observedMs']-fast_start['observedMs'])/1000
+            factor=(fast_end['time']-fast_start['time'])/elapsed
+            assert fast_end['state']==1 and 1.45<factor<2.2,(factor,fast_start,fast_end)
+            key('r');time.sleep(1);normal_start=state();time.sleep(3);final=state()
+            normal_elapsed=(final['observedMs']-normal_start['observedMs'])/1000
+            normal_factor=(final['time']-normal_start['time'])/normal_elapsed
+            assert final['state']==1 and .7<normal_factor<1.3,(normal_factor,normal_start,final)
+            (out/'result.json').write_text(json.dumps({'initial':s,'changed':changed,'stable':stable,'fast_start':fast_start,'fast_end':fast_end,'actual_fast_factor':factor,'normal_start':normal_start,'final':final,'actual_normal_factor':normal_factor},indent=2)+'\n')
+            print(json.dumps({'source':s['src'].split('/embed/')[0],
+                'actual_fast_playback_factor':round(factor,2),'actual_normal_factor':round(normal_factor,2)}),flush=True)
         finally:
             try:os.killpg(p.pid,signal.SIGTERM)
             except ProcessLookupError:pass

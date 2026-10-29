@@ -184,6 +184,12 @@
         }catch(_){message='Velocidad no disponible';}
         show(media,message);
     }
+    // Capture at the document before a site's target listener can stop the
+    // event. The per-media listener still covers media in shadow roots.
+    document.addEventListener('ratechange',event=>{
+        const media=event.target,s=states.get(media);
+        if(s?.watching)rateChanged({currentTarget:media});
+    },true);
     window.addEventListener('keydown',event=>{
         if(!event.isTrusted||event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||event.isComposing)return;
         const key=event.key?.toLowerCase();if(!keys.has(key)||typing(event))return;

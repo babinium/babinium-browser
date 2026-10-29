@@ -40,10 +40,15 @@ with (out/'stderr.log').open('w') as err:
         y=round(int(size['HEIGHT'])-initial['viewport'][1]+r['y']+25)
         subprocess.run(['xdotool','mousemove','--window',wid,str(x),str(y),'click','1'],check=True)
         wait(lambda s:not s.get('paused') and not s.get('ad'),seconds=15)
-        key('d');first=wait(lambda s:abs(s.get('rate',0)-1.1)<.001 and not s.get('ad'))
+        key('d');early_reset=os.environ.get('BABINIUM_TEST_EARLY_RESET','1')!='0'
+        if early_reset:time.sleep(.15);key('F8')
+        first=wait(lambda s:(not early_reset or s.get('forcedResets',0)>=1) and abs(s.get('rate',0)-1.1)<.001 and not s.get('ad'))
+        if early_reset:assert first['forcedRate']==1,first
         time.sleep(4);stable=state();assert abs(stable['rate']-1.1)<.001 and not stable['ad'],stable
         assert not stable['indicator'],stable
-        key('F8');forced=wait(lambda s:s.get('forcedResets',0)>=1 and abs(s.get('rate',0)-1.1)<.001 and not s.get('ad'))
+        if os.environ.get('BABINIUM_TEST_DIAG_ONLY')=='1':
+            print(json.dumps({'initial':initial,'first':first,'stable':stable}),flush=True);sys.exit(0)
+        key('F8');forced=wait(lambda s:s.get('forcedResets',0)>=(2 if early_reset else 1) and abs(s.get('rate',0)-1.1)<.001 and not s.get('ad'))
         assert forced['forcedRate']==1,forced
         time.sleep(2);after_forced=state();assert abs(after_forced['rate']-1.1)<.001 and not after_forced['ad'],after_forced
         key('d');key('d');wait(lambda s:abs(s.get('rate',0)-1.3)<.001)

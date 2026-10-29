@@ -122,6 +122,11 @@ test('YouTube reset after a browser shortcut is corrected, including after the i
     assert.equal(v.listeners.has('ratechange'),true);
     v.playbackRate=1;v.listeners.get('ratechange')({currentTarget:v});assert.equal(v.playbackRate,1.1);
 });
+test('a page cannot hide a rate reset by stopping the target event',()=>{
+    const f=fixture(),v=f.video();f.media.push(v);f.key('d');
+    const capture=f.handlers.get('document:ratechange');assert.equal(typeof capture,'function');
+    v.playbackRate=1;capture({target:v});assert.equal(v.playbackRate,1.1);
+});
 test('falls back to the media element if the YouTube adapter is unavailable',()=>{
     const f=fixture({host:'youtube.com'}),v=f.video();f.media.push(v);v.dispatchEvent=()=>true;
     f.key('d');assert.equal(v.playbackRate,1.1);assert.equal(v.getAttribute('data-babinium-request-rate'),null);

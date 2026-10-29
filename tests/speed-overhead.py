@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Compare two built bundles on the same idle local page under separate Xvfb screens."""
+"""Compare two built bundles on the same idle local page on the active display."""
 import http.server
 import json
 from pathlib import Path
@@ -20,7 +20,7 @@ try:
     with tempfile.TemporaryDirectory(prefix='bb-speed-bench-') as temp:
         for name,binary in [('previous',old),('current',new)]:
             dest=out/name;profile=Path(temp)/name
-            cmd=['xvfb-run','-a','-s','-screen 0 1360x768x24','python3','scripts/measure.py','--out',str(dest),'--duration','30','--warmup','15','--',
+            cmd=['python3','scripts/measure.py','--out',str(dest),'--duration','30','--warmup','15','--',
                 str(binary),'--profile',str(profile),'--no-update','--no-block','--telemetry',str(dest/'events.jsonl'),f'http://127.0.0.1:{server.server_port}/']
             with (out/(name+'.json')).open('w') as log:subprocess.run(cmd,stdout=log,check=True,timeout=45)
             s=json.loads((dest/'summary.json').read_text());
