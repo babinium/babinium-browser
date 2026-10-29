@@ -39,7 +39,7 @@ instalar. Para el bundle se necesitan las dependencias de ejecución del paquete
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.3.0_amd64.deb
+sudo apt install ./babinium-browser_0.3.1_amd64.deb
 ```
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
