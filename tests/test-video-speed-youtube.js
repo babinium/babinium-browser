@@ -9,7 +9,7 @@ function fixture(host='www.youtube.com'){
     const handlers={},requested=[];
     const document={addEventListener:(name,fn)=>handlers[name]=fn};
     vm.runInNewContext(code,{location:{hostname:host},document});
-    const player={setPlaybackRate:value=>requested.push(value)};
+    const player={setPlaybackRate:value=>requested.push(value),getAvailablePlaybackRates:()=>[.25,.5,1,1.5,2]};
     function event(value,{tag='VIDEO',withPlayer=true}={}){
         return {target:{tagName:tag,closest:()=>withPlayer?player:null,getAttribute:()=>value},prevented:false,preventDefault(){this.prevented=true;}};
     }
@@ -25,6 +25,15 @@ test('ignores invalid values, unrelated elements and missing player APIs',()=>{
         f.handlers['babinium-speed-request'](e);assert.equal(e.prevented,false);
     }
     assert.equal(f.requested.length,0);
+});
+test('does not limit the browser speed to YouTube menu bounds',()=>{
+    const f=fixture(),e=f.event('3');f.handlers['babinium-speed-request'](e);
+    assert.deepEqual(f.requested,[2]);assert.equal(e.target.playbackRate,3);assert.equal(e.prevented,true);
+});
+test('still requests the media rate if YouTube has not exposed its range',()=>{
+    const f=fixture(),e=f.event('3');const player=e.target.closest();player.getAvailablePlaybackRates=()=>[];
+    f.handlers['babinium-speed-request'](e);
+    assert.deepEqual(f.requested,[3]);assert.equal(e.target.playbackRate,3);assert.equal(e.prevented,true);
 });
 test('works on YouTube embedded hosts and does not activate elsewhere',()=>{
     for(const host of ['youtube.com','www.youtube.com','www.youtube-nocookie.com']){

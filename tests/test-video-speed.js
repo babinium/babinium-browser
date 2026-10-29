@@ -19,8 +19,10 @@ function fixture({host='example.test'}={}){
     const html=element('html'),body=element('body');
     const document={documentElement:html,activeElement:body,fullscreenElement:null,roots:[],
         querySelectorAll(sel){return sel==='video, audio'?media:sel==='*'?this.roots:[];},
+        createTreeWalker(root){const nodes=root===this?this.roots:(root.nodes||[]);let i=0;return {nextNode:()=>nodes[i++]||null};},
         createElement:element,addEventListener:(k,fn)=>handlers.set('document:'+k,fn),removeEventListener:k=>handlers.delete('document:'+k)};
     const context={document,location:{hostname:host},innerWidth:1200,innerHeight:800,
+        NodeFilter:{SHOW_ELEMENT:1},
         Event:class {constructor(type,opts){this.type=type;Object.assign(this,opts);}},
         addEventListener:(k,fn)=>handlers.set(k,fn),removeEventListener:k=>handlers.delete(k),
         setTimeout:fn=>{timers.set(++next,fn);return next;},clearTimeout:id=>timers.delete(id)};
@@ -72,6 +74,11 @@ test('does not consume keys when there is no usable media',()=>{
     const v=f.video({paused:true,getBoundingClientRect:()=>({left:0,top:0,right:0,bottom:0})});f.media.push(v);
     assert.equal(f.key('d').prevented,false);assert.equal(f.timers.size,0);
 });
+test('ignores unrelated keys before inspecting page focus or media',()=>{
+    const f=fixture(),v=f.video();f.media.push(v);
+    assert.doesNotThrow(()=>f.key('a',{composedPath(){throw new Error('unexpected page inspection');}}));
+    assert.equal(v.playbackRate,1);assert.equal(f.html.children.length,0);
+});
 test('chooses playing media and also supports hidden playing audio',()=>{
     const f=fixture(),paused=f.video({paused:true}),audio=f.video({audio:true,getBoundingClientRect:()=>({left:0,top:0,right:0,bottom:0})});
     f.media.push(paused,audio);f.key('d');assert.equal(audio.playbackRate,1.1);assert.equal(paused.playbackRate,1);
@@ -88,6 +95,12 @@ test('temporary indicators and listeners are removed after use',()=>{
 test('a player rejecting a speed change does not break the page',()=>{
     const f=fixture(),v=f.video();f.media.push(v);Object.defineProperty(v,'playbackRate',{get:()=>1,set:()=>{throw new Error('unsupported');}});
     assert.doesNotThrow(()=>f.key('d'));assert.equal(f.html.children[0].children[1].textContent,'Velocidad no disponible');
+});
+test('retries a short-lived player reset only a bounded number of times',()=>{
+    const f=fixture(),v=f.video();f.media.push(v);f.key('d');
+    for(let i=0;i<3;i++){v.playbackRate=1;v.listeners.get('ratechange')();assert.equal(v.playbackRate,1.1);}
+    v.playbackRate=1;v.listeners.get('ratechange')();assert.equal(v.playbackRate,1);
+    f.flush();assert.equal(v.listeners.has('ratechange'),false);
 });
 test('successive YouTube shortcuts preserve pending speed while the player updates',()=>{
     const f=fixture({host:'www.youtube.com'}),v=f.video(),requests=[];f.media.push(v);

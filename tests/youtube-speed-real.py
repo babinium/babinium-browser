@@ -48,13 +48,18 @@ with (out/'stderr.log').open('w') as err:
         key('z');backward=wait(lambda s:s.get('time',0)<forward['time']-7 and not s.get('ad'))
         key('m');key('x');marked_forward=wait(lambda s:s.get('time',0)>backward['time']+8 and not s.get('ad'))
         key('j');marked_back=wait(lambda s:s.get('time',0)<marked_forward['time']-7 and not s.get('ad'))
+        for _ in range(20):key('d')
+        high=wait(lambda s:abs(s.get('rate',0)-3)<.001 and not s.get('ad'))
+        time.sleep(3);high_stable=state();assert abs(high_stable['rate']-3)<.001 and not high_stable['ad'],high_stable
+        key('r');wait(lambda s:abs(s.get('rate',0)-1)<.001 and not s.get('ad'))
         result={'initial':initial,'after_d':first,'after_reset':final,'stable_after_4s':stable['rate'],
-            'forward':forward,'backward':backward,'marked_forward':marked_forward,'marked_back':marked_back}
+            'forward':forward,'backward':backward,'marked_forward':marked_forward,'marked_back':marked_back,
+            'high_rate':high,'high_rate_after_3s':high_stable['rate']}
         (out/'result.json').write_text(json.dumps(result,indent=2)+'\n')
         print(json.dumps({'initial_rate':initial['rate'],'after_d':first['rate'],'stable_after_4s':stable['rate'],
             'after_reset':final['rate'],'advanced_seconds':round(final['time']-initial['time'],2),'indicator_seen':first['indicator'],
             'seek_forward':round(forward['time']-before,2),'seek_back':round(forward['time']-backward['time'],2),
-            'marked_return':round(marked_forward['time']-marked_back['time'],2)}),flush=True)
+            'marked_return':round(marked_forward['time']-marked_back['time'],2),'high_rate_after_3s':high_stable['rate']}),flush=True)
     finally:
         try:os.killpg(p.pid,signal.SIGTERM)
         except ProcessLookupError:pass

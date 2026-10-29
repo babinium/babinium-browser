@@ -8,7 +8,7 @@
 
     function state(media){
         let s=states.get(media);
-        if(!s){s={previousFast:null,mark:null,beforeJump:null,pendingRate:null,pendingAt:0};states.set(media,s);}
+        if(!s){s={previousFast:null,mark:null,beforeJump:null,pendingRate:null,pendingAt:0,retries:0};states.set(media,s);}
         return s;
     }
     function editable(node){
@@ -43,11 +43,12 @@
         consider(document);
         if(best)return best;
         // Open shadow roots are searched only on a shortcut, never by polling.
-        const queue=[document];let examined=0;
-        while(queue.length&&examined<4096){
-            const root=queue.shift();
-            for(const node of root.querySelectorAll('*')){
-                if(++examined>4096)break;
+        const queue=[document];let examined=0,rootIndex=0;
+        while(rootIndex<queue.length&&examined<4096){
+            const root=queue[rootIndex++];
+            const walker=document.createTreeWalker(root,NodeFilter.SHOW_ELEMENT);let node;
+            while(examined<4096&&(node=walker.nextNode())){
+                examined++;
                 if(node.shadowRoot){consider(node.shadowRoot);queue.push(node.shadowRoot);}
             }
         }
@@ -76,7 +77,17 @@
         if(indicator)indicator.remove();
         indicator=null;label=null;current=null;
     }
-    function rateChanged(){if(label&&current)label.textContent=current.playbackRate.toFixed(2)+'×';}
+    function rateChanged(){
+        if(!label||!current)return;
+        const s=states.get(current);
+        // Some players immediately undo a direct media change. Retry only a
+        // few times while the indicator is present; never poll or fight forever.
+        if(s&&s.pendingRate!==null&&!/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(location.hostname)&&
+            Date.now()-s.pendingAt<2500&&Math.abs(current.playbackRate-s.pendingRate)>.001&&s.retries<3){
+            s.retries++;try{current.playbackRate=s.pendingRate;}catch(_){}
+        }
+        label.textContent=current.playbackRate.toFixed(2)+'×';
+    }
     function show(media,message){
         if(!document.documentElement)return;
         if(current!==media){if(current)current.removeEventListener('ratechange',rateChanged);current=media;current.addEventListener('ratechange',rateChanged);}
@@ -120,7 +131,7 @@
         s.pendingRate=null;return media.playbackRate;
     }
     function setRate(media,s,value){
-        s.pendingRate=value;s.pendingAt=Date.now();
+        s.pendingRate=value;s.pendingAt=Date.now();s.retries=0;
         // YouTube may restore its player-level speed after a direct media
         // change. The small main-world adapter synchronizes that state once.
         if(/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(location.hostname)){
@@ -161,8 +172,8 @@
         show(media,message);
     }
     window.addEventListener('keydown',event=>{
-        if(!event.isTrusted||event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||event.isComposing||typing(event))return;
-        const key=event.key?.toLowerCase();if(!keys.has(key))return;
+        if(!event.isTrusted||event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||event.isComposing)return;
+        const key=event.key?.toLowerCase();if(!keys.has(key)||typing(event))return;
         const media=select();if(!media)return;
         event.preventDefault();event.stopImmediatePropagation();apply(media,key);
     },true);

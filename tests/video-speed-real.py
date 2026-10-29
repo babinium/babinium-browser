@@ -45,6 +45,7 @@ with tempfile.TemporaryDirectory(prefix='bb-speed-media-') as tmp:
                 shadow=path=='/shadow'
                 host='<div id="shadow-host"></div>' if shadow else markup
                 setup=f"const root=document.querySelector('#shadow-host').attachShadow({{mode:'open'}});root.innerHTML={json.dumps(markup)};const v=root.querySelector('#media');" if shadow else "const v=document.querySelector('#media');"
+                if path=='/reset-once':setup+="let resetOnce=true;v.addEventListener('ratechange',()=>{if(resetOnce&&v.playbackRate!==1){resetOnce=false;v.playbackRate=1;}});"
                 page=f'''<!doctype html><title>waiting</title><style>body{{margin:10px}}button,input{{display:block;margin:8px 0}}</style>
                 <input id="input" placeholder="Escribir"><button id="play">Reproducir</button><button id="pause">Pausar y volver al comienzo</button>{host}
                 <script>{setup}
@@ -101,6 +102,6 @@ with tempfile.TemporaryDirectory(prefix='bb-speed-media-') as tmp:
             print(json.dumps({'case':case,'speed':s['rate'],'playing':not s['paused'],'time':round(s['time'],2),'input_protected':s['input']=='d'}),flush=True)
         finally:p.terminate();p.wait(timeout=10);log.close()
     try:
-        for case in ('video','audio','shadow','embed'):run(case)
+        for case in ('video','audio','shadow','embed','reset-once'):run(case)
     finally:
         parent.shutdown();child.shutdown()

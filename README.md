@@ -18,8 +18,9 @@ pedidos y los puntos que todavía requieren pruebas.
 - Pestañas vacías negras y «Babinium» en el extremo derecho de la barra.
 - Favoritos en el perfil, con estrella y panel; cookies y datos de sitios
   persistentes entre reinicios.
-- Control integrado de velocidad para medios HTML5, con indicador y atajos de
-  Video Speed Controller. Al pulsar «Babinium» se abre una pestaña de ayuda GTK.
+- Control integrado de velocidad para medios HTML5, con indicador y los atajos de
+  [Video Speed Controller](https://github.com/igrigorik/videospeed). Al pulsar
+  «Babinium» se abre una pestaña de ayuda GTK.
 - Modo oscuro predeterminado con la API local de Dark Reader; el botón Oscuro
   permite excluir un sitio. YouTube usa su propio tema oscuro cuando está
   disponible. Cuando el fondo y varios puntos visibles ya son oscuros se evita
@@ -42,7 +43,7 @@ instalar. Para el bundle se necesitan las dependencias de ejecución del paquete
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.4.1_amd64.deb
+sudo apt install ./babinium-browser_0.4.2_amd64.deb
 ```
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
