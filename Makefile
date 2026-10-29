@@ -9,7 +9,7 @@ RUSTLIB = blocker/target/release/libbabinium_blocker.a
 all: build/bin/babinium-browser build/lib/babinium-browser/libbabinium-adblock.so build/bin/babinium-filter build/bin/babinium-filter-update
 
 $(RUSTLIB): blocker/src/lib.rs blocker/src/main.rs blocker/Cargo.toml
-	cd blocker && cargo build --release
+	cd blocker && cargo build --release --locked
 
 build/bin/babinium-filter: $(RUSTLIB)
 	mkdir -p $(@D)
@@ -32,7 +32,7 @@ resources: all
 	cp data/cosmetic.js data/sources.json data/upstream.json build/share/babinium-browser/
 
 test: all
-	cd blocker && cargo test --release
+	cd blocker && cargo test --release --locked
 	python3 -m unittest discover -s tests -p 'test_*.py' -v
 
 package:

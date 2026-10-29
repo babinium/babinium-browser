@@ -173,7 +173,7 @@ static gboolean key_press(GtkWidget *w,GdkEventKey *e,gpointer unused){
     case GDK_KEY_r:if(t){if(e->state&GDK_SHIFT_MASK)webkit_web_view_reload_bypass_cache(WEBKIT_WEB_VIEW(t->view));else webkit_web_view_reload(WEBKIT_WEB_VIEW(t->view));}return TRUE;
     case GDK_KEY_b:gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(shield),!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(shield)));return TRUE;
     case GDK_KEY_d:gtk_popover_popup(GTK_POPOVER(downloads_pop));return TRUE;
-    case GDK_KEY_Tab:{int n=gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook)),count=gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),(n+((e->state&GDK_SHIFT_MASK)?count-1:1))%count);return TRUE;}
+    case GDK_KEY_ISO_Left_Tab:case GDK_KEY_Tab:{int n=gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook)),count=gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),(n+((e->state&GDK_SHIFT_MASK)?count-1:1))%count);return TRUE;}
     default:if(k>=GDK_KEY_1&&k<=GDK_KEY_9){gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),k==GDK_KEY_9?-1:(int)(k-GDK_KEY_1));return TRUE;}}}
     if((e->state&GDK_MOD1_MASK)&&k==GDK_KEY_Left){navigate(NULL,GINT_TO_POINTER(0));return TRUE;}
     if((e->state&GDK_MOD1_MASK)&&k==GDK_KEY_Right){navigate(NULL,GINT_TO_POINTER(1));return TRUE;}

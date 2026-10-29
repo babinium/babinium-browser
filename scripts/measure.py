@@ -37,8 +37,10 @@ def memory(pid):
         try:
             s=(Path('/proc')/str(pid)/'status').read_text().splitlines()
             rss=next((int(l.split()[1]) for l in s if l.startswith('VmRSS:')),0)
-            return rss,0,0,False
-        except (FileNotFoundError,PermissionError,ProcessLookupError):return 0,0,0,False
+            zombie=any(l.startswith('State:') and l.split()[1]=='Z' for l in s)
+            return rss,0,0,zombie
+        except (FileNotFoundError,ProcessLookupError):return 0,0,0,True
+        except PermissionError:return 0,0,0,False
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
