@@ -54,10 +54,12 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
 - [x] Mostrar «Babinium» al extremo derecho de la barra de pestañas.
 - [x] Mostrar negro desde el primer instante en una pestaña nueva vacía.
 - [x] Permitir guardar, consultar y quitar favoritos y conservarlos al cerrar.
-- [ ] Integrar controles de velocidad para video y audio HTML5 con los atajos
+- [x] Integrar controles de velocidad para video y audio HTML5 con los atajos
   predeterminados de Video Speed Controller, sin instalar una extensión ni
-  habilitar procesos o sondeo continuos adicionales.
-- [ ] Abrir una pestaña de ayuda al pulsar «Babinium» en la barra de pestañas;
+  habilitar procesos o sondeo continuos adicionales. Priorizar la velocidad
+  elegida con Babinium si YouTube intenta volver a su propio ajuste; las
+  restricciones de cada medio o reproductor pueden impedir algunos cambios.
+- [x] Abrir una pestaña de ayuda al pulsar «Babinium» en la barra de pestañas;
   incluir los controles de velocidad y permitir agregar información más adelante.
 - [x] Conservar cookies, almacenamiento local e IndexedDB entre reinicios; se
   verificó con un perfil de prueba independiente.

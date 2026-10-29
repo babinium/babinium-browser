@@ -33,7 +33,14 @@ try:
             '--screenshot',str(out/'window.png'),'--snapshot-after','30',
             f'http://127.0.0.1:{server.server_port}/'],stdout=subprocess.DEVNULL,stderr=err,start_new_session=True)
         try:
-            wid=subprocess.check_output(['xdotool','search','--sync','--onlyvisible','--pid',str(p.pid)],text=True,timeout=10).splitlines()[0]
+            # X11 windows can disappear while xdotool enumerates them; retry
+            # that race instead of treating it as a browser failure.
+            end=time.monotonic()+10;wid=None
+            while time.monotonic()<end and p.poll() is None:
+                result=subprocess.run(['xdotool','search','--onlyvisible','--pid',str(p.pid)],capture_output=True,text=True,timeout=5)
+                if result.returncode==0 and result.stdout.splitlines():wid=result.stdout.splitlines()[0];break
+                time.sleep(.1)
+            if not wid:raise AssertionError('Browser window did not appear')
             def state():
                 title=subprocess.check_output(['xdotool','getwindowname',wid],text=True,timeout=5).strip()
                 if not title.startswith('BBEMBED:'):return None

@@ -8,7 +8,8 @@ la simplicidad de surf; la interfaz es nueva. Licencia GPL-3.0-o-posterior.
 Se validaron reproducción real de YouTube, bloqueo de solicitudes publicitarias
 y modificación de datos del reproductor. La eliminación de preroll/midroll no
 quedó demostrada porque el control tampoco mostró anuncios de vídeo.
-Véanse los informes de [validación 0.3.1](docs/validation-0.3.1.md),
+Véanse los informes de [validación 0.4.4](docs/validation-0.4.4.md), [validación 0.4.3](docs/validation-0.4.3.md),
+[validación 0.4.2](docs/validation-0.4.2.md), [validación 0.3.1](docs/validation-0.3.1.md),
 [validación 0.3.0](docs/validation-0.3.md), [validación 0.2](docs/validation-0.2.md) y del
 [prototipo inicial 0.1](docs/validation.md).
 La [lista de requisitos y su estado](docs/REQUISITOS.md) conserva todos los
@@ -43,7 +44,7 @@ instalar. Para el bundle se necesitan las dependencias de ejecución del paquete
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.4.2_amd64.deb
+sudo apt install ./babinium-browser_0.4.4_amd64.deb
 ```
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
@@ -67,6 +68,11 @@ también ofrece botones −/+. Los atajos no se activan mientras se escribe ni c
 Ctrl, Alt, Super o Mayúsculas. Para medios en un iframe de otro origen, hacé
 clic en el reproductor para enfocarlo. Algunos reproductores, medios protegidos,
 elementos en componentes cerrados o transmisiones pueden limitar estos controles.
+En YouTube, Babinium prioriza la velocidad pedida; su indicador muestra la
+velocidad real, aunque el menú propio de YouTube no coincida por encima de 2×.
+Después de cambiar la velocidad, el navegador escucha cambios del medio y
+reaplica la elegida si el sitio la restablece, con reintentos limitados y sin
+sondeo. Si un reproductor la fuerza repetidamente, puede prevalecer su límite.
 
 YouTube recibe una preferencia inicial de 360p mediante un método interno del
 reproductor, que YouTube puede cambiar o ignorar. El usuario puede elegir otra
