@@ -8,7 +8,7 @@
 
     function state(media){
         let s=states.get(media);
-        if(!s){s={previousFast:null,mark:null,beforeJump:null};states.set(media,s);}
+        if(!s){s={previousFast:null,mark:null,beforeJump:null,pendingRate:null,pendingAt:0};states.set(media,s);}
         return s;
     }
     function editable(node){
@@ -115,19 +115,38 @@
         }
         media.currentTime=target;
     }
+    function currentRate(media,s){
+        if(s.pendingRate!==null&&Math.abs(media.playbackRate-s.pendingRate)>.001&&Date.now()-s.pendingAt<1500)return s.pendingRate;
+        s.pendingRate=null;return media.playbackRate;
+    }
+    function setRate(media,s,value){
+        s.pendingRate=value;s.pendingAt=Date.now();
+        // YouTube may restore its player-level speed after a direct media
+        // change. The small main-world adapter synchronizes that state once.
+        if(/(^|\.)(youtube\.com|youtube-nocookie\.com)$/.test(location.hostname)){
+            media.setAttribute('data-babinium-request-rate',String(value));
+            try{
+                if(!media.dispatchEvent(new Event('babinium-speed-request',{bubbles:true,cancelable:true})))return;
+            }finally{media.removeAttribute('data-babinium-request-rate');}
+        }
+        media.playbackRate=value;
+    }
     function apply(media,key){
         const s=state(media);let message='';
         try{
             switch(key){
             case 's':case 'd':{
-                const next=Math.round((media.playbackRate+(key==='s'?-.1:.1))*100)/100;
-                media.playbackRate=Math.max(.07,Math.min(16,next));break;
+                const next=Math.round((currentRate(media,s)+(key==='s'?-.1:.1))*100)/100;
+                const value=Math.max(.07,Math.min(16,next));setRate(media,s,value);message=value.toFixed(2)+'×';break;
             }
-            case 'r':media.playbackRate=1;break;
-            case 'g':
-                if(Math.abs(media.playbackRate-1.8)<.001){media.playbackRate=s.previousFast??1;s.previousFast=null;}
-                else{s.previousFast=media.playbackRate;media.playbackRate=1.8;}
+            case 'r':setRate(media,s,1);message='1.00×';break;
+            case 'g':{
+                const current=currentRate(media,s);let value;
+                if(Math.abs(current-1.8)<.001){value=s.previousFast??1;s.previousFast=null;}
+                else{s.previousFast=current;value=1.8;}
+                setRate(media,s,value);message=value.toFixed(2)+'×';
                 break;
+            }
             case 'z':seek(media,media.currentTime-10);break;
             case 'x':seek(media,media.currentTime+10);break;
             case 'm':s.mark=media.currentTime;s.beforeJump=null;message='Marca guardada';break;

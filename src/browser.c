@@ -307,12 +307,14 @@ static gboolean screenshot(gpointer unused){(void)unused;GdkWindow *gw=gtk_widge
 static GtkWidget *button(const char *label,GCallback cb,gpointer data){GtkWidget *b=gtk_button_new_with_label(label);g_signal_connect(b,"clicked",cb,data);gtk_box_pack_start(GTK_BOX(toolbar),b,FALSE,FALSE,0);return b;}
 static void install_scripts(void){
     if(!content)return;
-    static char *dark_js,*youtube_js,*ambient_js,*speed_js;
+    static char *dark_js,*youtube_js,*ambient_js,*speed_js,*speed_youtube_js;
     static const char *youtube_uris[]={"http://youtube.com/*","https://youtube.com/*","http://*.youtube.com/*","https://*.youtube.com/*",NULL};
+    static const char *speed_youtube_uris[]={"http://youtube.com/*","https://youtube.com/*","http://*.youtube.com/*","https://*.youtube.com/*","http://youtube-nocookie.com/*","https://youtube-nocookie.com/*","http://*.youtube-nocookie.com/*","https://*.youtube-nocookie.com/*",NULL};
     if(!dark_js){char *path=g_build_filename(data_dir,"darkreader.js",NULL);if(!g_file_get_contents(path,&dark_js,NULL,NULL))g_warning("Falta Dark Reader: %s",path);g_free(path);}
     if(!youtube_js){char *path=g_build_filename(data_dir,"youtube.js",NULL);if(!g_file_get_contents(path,&youtube_js,NULL,NULL))g_warning("Falta la preferencia de YouTube: %s",path);g_free(path);}
     if(!ambient_js){char *path=g_build_filename(data_dir,"youtube-ambient.js",NULL);if(!g_file_get_contents(path,&ambient_js,NULL,NULL))g_warning("Falta la preferencia de modo ambiente: %s",path);g_free(path);}
     if(!speed_js){char *path=g_build_filename(data_dir,"video-speed.js",NULL);if(!g_file_get_contents(path,&speed_js,NULL,NULL))g_warning("Falta el control de velocidad: %s",path);g_free(path);}
+    if(!speed_youtube_js){char *path=g_build_filename(data_dir,"video-speed-youtube.js",NULL);if(!g_file_get_contents(path,&speed_youtube_js,NULL,NULL))g_warning("Falta el adaptador de velocidad de YouTube: %s",path);g_free(path);}
     webkit_user_content_manager_remove_all_scripts(content);
     if(dark_js){
         JsonBuilder *b=json_builder_new();json_builder_begin_array(b);GHashTableIter it;gpointer key;g_hash_table_iter_init(&it,light_sites);while(g_hash_table_iter_next(&it,&key,NULL))json_builder_add_string_value(b,key);json_builder_end_array(b);
@@ -323,6 +325,7 @@ static void install_scripts(void){
     }
     if(youtube_js){WebKitUserScript *u=webkit_user_script_new(youtube_js,WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,youtube_uris,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
     if(ambient_js){WebKitUserScript *u=webkit_user_script_new(ambient_js,WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,youtube_uris,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
+    if(speed_youtube_js){WebKitUserScript *u=webkit_user_script_new(speed_youtube_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,speed_youtube_uris,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
     if(speed_js){WebKitUserScript *u=webkit_user_script_new_for_world(speed_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,"babinium-speed",NULL,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
 }
 static void extension_data(WebKitWebContext *ctx){
@@ -357,7 +360,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.0");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.1");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);

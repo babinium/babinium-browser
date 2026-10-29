@@ -6,11 +6,11 @@ const fs=require('node:fs');
 const vm=require('node:vm');
 const code=fs.readFileSync('data/video-speed.js','utf8');
 
-function fixture(){
+function fixture({host='example.test'}={}){
     const handlers=new Map(),timers=new Map(),media=[];let next=0;
     function element(tag){
         const e={nodeType:1,tagName:tag.toUpperCase(),style:{},children:[],attributes:{},listeners:new Map(),parentNode:null,
-            setAttribute(k,v){this.attributes[k]=v;},getAttribute(k){return this.attributes[k]??null;},
+            setAttribute(k,v){this.attributes[k]=v;},getAttribute(k){return this.attributes[k]??null;},removeAttribute(k){delete this.attributes[k];},
             addEventListener(k,fn){this.listeners.set(k,fn);},removeEventListener(k){this.listeners.delete(k);},
             append(...children){for(const c of children){c.parentNode=this;this.children.push(c);}},
             remove(){if(this.parentNode)this.parentNode.children=this.parentNode.children.filter(c=>c!==this);this.parentNode=null;}};
@@ -20,7 +20,8 @@ function fixture(){
     const document={documentElement:html,activeElement:body,fullscreenElement:null,roots:[],
         querySelectorAll(sel){return sel==='video, audio'?media:sel==='*'?this.roots:[];},
         createElement:element,addEventListener:(k,fn)=>handlers.set('document:'+k,fn),removeEventListener:k=>handlers.delete('document:'+k)};
-    const context={document,innerWidth:1200,innerHeight:800,
+    const context={document,location:{hostname:host},innerWidth:1200,innerHeight:800,
+        Event:class {constructor(type,opts){this.type=type;Object.assign(this,opts);}},
         addEventListener:(k,fn)=>handlers.set(k,fn),removeEventListener:k=>handlers.delete(k),
         setTimeout:fn=>{timers.set(++next,fn);return next;},clearTimeout:id=>timers.delete(id)};
     context.window=context;vm.createContext(context);vm.runInContext(code,context);
@@ -87,4 +88,14 @@ test('temporary indicators and listeners are removed after use',()=>{
 test('a player rejecting a speed change does not break the page',()=>{
     const f=fixture(),v=f.video();f.media.push(v);Object.defineProperty(v,'playbackRate',{get:()=>1,set:()=>{throw new Error('unsupported');}});
     assert.doesNotThrow(()=>f.key('d'));assert.equal(f.html.children[0].children[1].textContent,'Velocidad no disponible');
+});
+test('successive YouTube shortcuts preserve pending speed while the player updates',()=>{
+    const f=fixture({host:'www.youtube.com'}),v=f.video(),requests=[];f.media.push(v);
+    v.dispatchEvent=e=>{assert.equal(e.type,'babinium-speed-request');requests.push(v.getAttribute('data-babinium-request-rate'));return false;};
+    f.key('d');f.key('d');f.key('g');f.key('g');
+    assert.deepEqual(requests,['1.1','1.2','1.8','1.2']);assert.equal(v.getAttribute('data-babinium-request-rate'),null);
+});
+test('falls back to the media element if the YouTube adapter is unavailable',()=>{
+    const f=fixture({host:'youtube.com'}),v=f.video();f.media.push(v);v.dispatchEvent=()=>true;
+    f.key('d');assert.equal(v.playbackRate,1.1);assert.equal(v.getAttribute('data-babinium-request-rate'),null);
 });

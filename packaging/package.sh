@@ -11,7 +11,7 @@ cp LICENSE THIRD_PARTY.md README.md "$stage/usr/share/doc/babinium-browser/"
 cp build/share/babinium-browser/THIRD_PARTY_NOTICES.txt "$stage/usr/share/doc/babinium-browser/"
 cat > "$stage/DEBIAN/control" <<'EOF'
 Package: babinium-browser
-Version: 0.4.0
+Version: 0.4.1
 Architecture: amd64
 Maintainer: babinium <miguel_babini@outlook.com>
 Section: web
@@ -22,5 +22,5 @@ Description: Experimental minimal WebKitGTK browser with native adblock-rust
  C/GTK shell, tabs, downloads, native request blocking, cosmetic filtering,
  scriptlets and automatically updated lists. YouTube compatibility is experimental.
 EOF
-dpkg-deb --root-owner-group --build "$stage" artifacts/babinium-browser_0.4.0_amd64.deb
+dpkg-deb --root-owner-group --build "$stage" artifacts/babinium-browser_0.4.1_amd64.deb
 tar -czf artifacts/upstream-sources.tar.gz -C build/upstream ubo.tar.gz brave.tar.gz darkreader.tar.gz
