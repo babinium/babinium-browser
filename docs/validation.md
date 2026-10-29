@@ -37,6 +37,8 @@ Debian 13.7, kernel `6.12.113+deb13-amd64`, WebKitGTK 2.54.0 y GStreamer 1.26.2.
 Equipo de prueba: Celeron B820 de dos núcleos; compilación x86-64 genérica, sin
 ajuste al procesador ni a su RAM. Pantalla X11 real, ventana de 1366 × 721.
 Perfiles nuevos, sin iniciar sesión en YouTube; cachés del sistema sin vaciar.
+Las mediciones de rendimiento de vídeo se hicieron silenciadas; la salida de
+audio se comprueba por separado y no se deduce de esos valores de CPU.
 
 Cada segundo se muestreó toda la sesión y sus descendientes, incluidos los
 procesos WebKit, bubblewrap y xdg-dbus-proxy. PSS estuvo disponible en todas las
@@ -66,7 +68,7 @@ cada 100 ms.
 
 ## Arranque
 
-La primera representación de la ventana tardó **0,692 s de mediana** en tres
+El primer callback de dibujo GTK de la ventana tardó **0,692 s de mediana** en tres
 arranques con perfil nuevo; rango 0,450–0,821 s desde el lanzamiento. Esto mide
 la interfaz vacía lista para recibir una dirección. WebKit se crea al navegar,
 con su coste correspondiente: al lanzar directamente Rick Astley la ventana se
@@ -107,6 +109,13 @@ Un intento de Big Buck Bunny quedó pausado después del cambio de calidad. Se
 conserva como `youtube-bunny-paused-attempt`, excluido de las cifras de reproducción.
 Se repitió usando `playVideo()` del controlador del sitio además de
 `HTMLMediaElement.play()`, sin cambiar el navegador ni saltar anuncios.
+
+La salida de audio se comprobó aparte, en modo normal con un clic real de
+reproducción y volumen bajo. Se capturó únicamente el sink input del proceso
+WebKit de Babinium: 2,9 s de PCM estéreo a 48 kHz, RMS 98,33 y pico 668 en formato
+de 16 bits, con el flujo activo y sin silenciar. No se grabó el micrófono ni la
+mezcla del escritorio. Las muestras de audio se descartaron después del cálculo;
+se conserva el resultado numérico y `tests/audio-smoke.py` permite repetirlo.
 
 ## Límites y alternativa
 
