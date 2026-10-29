@@ -38,8 +38,9 @@ pedidos y los puntos que todavía requieren pruebas.
 
 ## Ejecutar
 
-El artefacto de GitHub Actions contiene un `.deb` y `bundle/` ejecutable sin
-instalar. Para el bundle se necesitan las dependencias de ejecución del paquete.
+Descargá el paquete para Debian 13 amd64 desde la [última versión publicada](https://github.com/babinium/babinium-browser/releases/latest).
+El artefacto de GitHub Actions también contiene un `.deb` y `bundle/` ejecutable
+sin instalar. Para el bundle se necesitan las dependencias de ejecución del paquete.
 
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
