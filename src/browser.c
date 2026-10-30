@@ -5,6 +5,7 @@
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include "site-name.h"
 
@@ -241,7 +242,7 @@ static void favorites_rebuild(void){
         char *uri=g_key_file_get_string(favorites,groups[i],"uri",NULL),*title=g_key_file_get_string(favorites,groups[i],"title",NULL);
         if(!bookmarkable(uri)){g_free(uri);g_free(title);continue;}
         char *site=favorite_site_name(uri),*clean=g_strdup(title?title:"");g_strstrip(clean);
-        gboolean title_is_url=!g_ascii_strncasecmp(clean,"http://",7)||!g_ascii_strncasecmp(clean,"https://",8);
+        gboolean title_is_url=favorite_title_is_address(clean,uri);
         const char *shown=*clean&&!title_is_url?clean:site;
         GtkWidget *row=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,3),*open=gtk_button_new(),*remove=gtk_button_new_with_label("×");
         GtkWidget *content=gtk_box_new(GTK_ORIENTATION_VERTICAL,2),*label=gtk_label_new(shown);

@@ -29,9 +29,21 @@ static void test_local_and_invalid(void){
     check("not a URL","Sitio");
 }
 
+static void test_address_titles(void){
+    const char *uri="https://www.youtube.com/watch?v=example";
+    g_assert_true(favorite_title_is_address(uri,uri));
+    g_assert_true(favorite_title_is_address("www.youtube.com/watch?v=example",uri));
+    g_assert_true(favorite_title_is_address("youtube.com/watch?v=example",uri));
+    g_assert_true(favorite_title_is_address("YOUTUBE.COM",uri));
+    g_assert_false(favorite_title_is_address("Un video de YouTube",uri));
+    g_assert_false(favorite_title_is_address("youtube.compartido",uri));
+    g_assert_false(favorite_title_is_address(NULL,uri));
+}
+
 int main(int argc,char **argv){
     g_test_init(&argc,&argv,NULL);
     g_test_add_func("/favorite-site/domains",test_domains);
     g_test_add_func("/favorite-site/local-and-invalid",test_local_and_invalid);
+    g_test_add_func("/favorite-site/address-titles",test_address_titles);
     return g_test_run();
 }

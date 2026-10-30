@@ -17,8 +17,13 @@ items=[
     ('https://es.wikipedia.org/wiki/Navegador_web','Navegador web — Wikipedia'),
     ('https://www.example.com/una/direccion/muy/larga?dato=ejemplo',
      'https://www.example.com/una/direccion/muy/larga?dato=ejemplo'),
+    ('https://www.example.com/con-www?dato=ejemplo','www.example.com/con-www?dato=ejemplo'),
+    ('https://www.example.com/sin-www?dato=ejemplo','example.com/sin-www?dato=ejemplo'),
     ('http://127.0.0.1:1234/private/path','Sitio de prueba local'),
+    ('https://mail.google.com/mail/u/0/#inbox','TituloLargoSinEspacios'*4),
 ]
+if 'many' in sys.argv[3:]:
+    items.extend((f'https://www.example.com/page/{i}',f'Favorito de prueba número {i}') for i in range(1,21))
 with tempfile.TemporaryDirectory(prefix='bb-favorites-layout-') as temp:
     profile=Path(temp);config=profile/'favorites.ini'
     data=''.join(f'[{hashlib.sha256(uri.encode()).hexdigest()}]\nuri={uri}\ntitle={title}\n\n' for uri,title in items)
@@ -34,8 +39,16 @@ with tempfile.TemporaryDirectory(prefix='bb-favorites-layout-') as temp:
                 if result.returncode==0 and result.stdout.splitlines():wid=result.stdout.splitlines()[0];break
                 time.sleep(.1)
             if not wid:raise AssertionError('No apareció la ventana del navegador')
+            widths=[arg for arg in sys.argv[3:] if arg.isdecimal()]
+            if widths:
+                width=int(widths[0])
+                command=f'[id="{wid}"] floating enable, resize set width {width} px height 500 px'
+                subprocess.run(['i3-msg',command],check=True,capture_output=True,text=True,timeout=5)
+                time.sleep(.4)
             subprocess.run(['xdotool','windowfocus','--sync',wid],check=True,timeout=5)
             subprocess.run(['xdotool','key','--clearmodifiers','--window',wid,'ctrl+shift+d'],check=True,timeout=5)
+            children=Path('/proc')/str(p.pid)/'task'/str(p.pid)/'children'
+            if children.read_text().strip():raise AssertionError('El panel abrió un proceso adicional')
             p.wait(timeout=15)
             if p.returncode:raise AssertionError('El navegador salió con error')
             if not screenshot.is_file():raise AssertionError('No se guardó la captura de la ventana de prueba')
