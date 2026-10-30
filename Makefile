@@ -6,7 +6,7 @@ EXT_PKGS = webkit2gtk-web-extension-4.1 json-glib-1.0
 RUSTLIB = blocker/target/release/libbabinium_blocker.a
 
 .PHONY: all resources test package clean
-all: build/bin/babinium-browser build/lib/babinium-browser/libbabinium-adblock.so build/bin/babinium-filter build/bin/babinium-filter-update
+all: build/bin/babinium-browser build/lib/babinium-browser/libbabinium-adblock.so build/lib/babinium-browser/babinium-yt-dlp build/bin/babinium-filter build/bin/babinium-filter-update
 
 $(RUSTLIB): blocker/src/lib.rs blocker/src/main.rs blocker/Cargo.toml
 	cd blocker && cargo build --release --locked
@@ -24,6 +24,10 @@ build/lib/babinium-browser/libbabinium-adblock.so: src/extension.c src/blocker.h
 	$(CC) $(CFLAGS) -fPIC -shared src/extension.c src/youtube-url.c $(RUSTLIB) -o $@ $$(pkg-config --cflags --libs $(EXT_PKGS)) -Wl,--gc-sections -ldl -lpthread -lm
 
 build/bin/babinium-filter-update: scripts/filter-update.py
+	mkdir -p $(@D)
+	install -m755 $< $@
+
+build/lib/babinium-browser/babinium-yt-dlp: scripts/mpv-yt-dlp.py
 	mkdir -p $(@D)
 	install -m755 $< $@
 

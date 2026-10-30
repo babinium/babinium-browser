@@ -18,11 +18,11 @@ static WebKitUserContentManager *content;
 static GHashTable *disabled,*light_sites;
 static GKeyFile *favorites;
 static GPtrArray *tabs;
-static char *profile,*data_dir,*ext_dir,*bin_dir,*index_path,*sites_path,*light_path,*favorites_path,*filters_dir,*animation_optout_path,*mpv_resolution_path;
+static char *profile,*data_dir,*ext_dir,*bin_dir,*index_path,*sites_path,*light_path,*favorites_path,*filters_dir,*animation_optout_path,*mpv_resolution_path,*mpv_subtitles_path;
 static char *opt_profile,*opt_data,*opt_telemetry,*opt_eval,*opt_screenshot;
 static int quit_after,eval_after=10,snapshot_after=15,probe_interval;
 static gboolean no_block,no_update,autoplay,audit,updating,setting_shield,setting_dark,favorites_readonly;
-static gboolean suspend_animations=TRUE,setting_animations,setting_mpv_resolution;
+static gboolean suspend_animations=TRUE,setting_animations,setting_mpv_resolution,setting_mpv_subtitles,mpv_subtitles;
 static const guint mpv_resolutions[]={144,240,360,480,720,1080};
 static guint mpv_resolution=720;
 static gint64 start_time;
@@ -108,7 +108,7 @@ static void uri_changed(GObject *obj,GParamSpec *ps,Tab *t){
     if(t->youtube_url){
         if(g_strcmp0(t->youtube_url,t->last_auto_url)){
             g_free(t->last_auto_url);t->last_auto_url=g_strdup(t->youtube_url);
-            mpv_controller_play(GTK_WINDOW(window),t->youtube_url,mpv_resolution);
+            mpv_controller_play(GTK_WINDOW(window),t->youtube_url,mpv_resolution,mpv_subtitles,ext_dir);
         }
     }else if(uri&&*uri)g_clear_pointer(&t->last_auto_url,g_free);
     if(t==current())refresh_controls();
@@ -195,7 +195,7 @@ static void navigate(GtkButton *b,gpointer which){(void)b;Tab *t=current();if(!t
 static void add_tab(GtkButton *b,gpointer unused){(void)b;(void)unused;new_tab("about:blank",TRUE);gtk_entry_set_text(GTK_ENTRY(address),"");gtk_widget_grab_focus(address);}
 static void open_mpv(GtkButton *button,gpointer unused){
     (void)button;(void)unused;Tab *t=current();if(!t||!t->youtube_url)return;
-    mpv_controller_play(GTK_WINDOW(window),t->youtube_url,mpv_resolution);
+    mpv_controller_play(GTK_WINDOW(window),t->youtube_url,mpv_resolution,mpv_subtitles,ext_dir);
 }
 static int mpv_resolution_index(guint value){
     for(guint i=0;i<G_N_ELEMENTS(mpv_resolutions);i++)if(mpv_resolutions[i]==value)return (int)i;
@@ -219,6 +219,22 @@ static void set_mpv_resolution(GtkComboBox *combo,gpointer unused){
         if(other)gtk_combo_box_set_active(GTK_COMBO_BOX(other),index);
     }
     setting_mpv_resolution=FALSE;
+}
+static void set_mpv_subtitles(GtkToggleButton *button,gpointer unused){
+    (void)unused;if(setting_mpv_subtitles)return;
+    gboolean enabled=gtk_toggle_button_get_active(button);if(enabled==mpv_subtitles)return;
+    GError *error=NULL;
+    if(!g_file_set_contents(mpv_subtitles_path,enabled?"1\n":"0\n",-1,&error)){
+        setting_mpv_subtitles=TRUE;gtk_toggle_button_set_active(button,mpv_subtitles);setting_mpv_subtitles=FALSE;
+        file_error("No se pudo guardar la preferencia de subtítulos",error);g_clear_error(&error);return;
+    }
+    mpv_subtitles=enabled;setting_mpv_subtitles=TRUE;
+    for(guint i=0;i<tabs->len;i++){
+        Tab *t=g_ptr_array_index(tabs,i);
+        GtkWidget *other=t->help?g_object_get_data(G_OBJECT(t->help),"bb-mpv-subtitles"):NULL;
+        if(other)gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(other),enabled);
+    }
+    setting_mpv_subtitles=FALSE;
 }
 static void toggle_animations(GtkToggleButton *button,gpointer unused){
     (void)unused;if(setting_animations)return;
@@ -250,7 +266,7 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_widget_set_halign(body,GTK_ALIGN_CENTER);gtk_widget_set_valign(body,GTK_ALIGN_START);
     GtkWidget *heading=gtk_label_new(NULL);gtk_label_set_markup(GTK_LABEL(heading),"<span size='xx-large' weight='bold'>Babinium</span>");
     gtk_label_set_xalign(GTK_LABEL(heading),0);gtk_box_pack_start(GTK_BOX(body),heading,FALSE,FALSE,0);
-    GtkWidget *subtitle=gtk_label_new(NULL);gtk_label_set_markup(GTK_LABEL(subtitle),"<span size='large' weight='bold'>Controles de velocidad para videos</span>");
+    GtkWidget *subtitle=gtk_label_new(NULL);gtk_label_set_markup(GTK_LABEL(subtitle),"<span size='large' weight='bold'>Controles de velocidad para videos fuera de YouTube</span>");
     gtk_label_set_xalign(GTK_LABEL(subtitle),0);gtk_box_pack_start(GTK_BOX(body),subtitle,FALSE,FALSE,0);
     GtkWidget *grid=gtk_grid_new();gtk_grid_set_column_spacing(GTK_GRID(grid),24);gtk_grid_set_row_spacing(GTK_GRID(grid),10);
     static const char *rows[][2]={
@@ -269,7 +285,27 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_box_pack_start(GTK_BOX(body),grid,FALSE,FALSE,0);
     GtkWidget *note=gtk_label_new("Los atajos controlan el video o audio activo y no se aplican mientras escribís.\nSi el reproductor está incrustado, hacé clic en él para darle el foco.\nAlgunos reproductores o contenidos pueden limitar la velocidad.");
     gtk_label_set_line_wrap(GTK_LABEL(note),TRUE);gtk_label_set_xalign(GTK_LABEL(note),0);gtk_box_pack_start(GTK_BOX(body),note,FALSE,FALSE,0);
-    GtkWidget *mpv_note=gtk_label_new("Los videos de YouTube se abren automáticamente en MPV; «Abrir MPV» permite volver a abrirlos.\nLa página conserva sus recomendaciones y el video no se reproduce en Babinium.\nMPV prefiere audio en español si está disponible; sin subtítulos.\nSe necesitan MPV y yt-dlp actualizado; en Debian 13 está disponible en trixie-backports.");
+    GtkWidget *mpv_heading=gtk_label_new(NULL);gtk_label_set_markup(GTK_LABEL(mpv_heading),"<span size='large' weight='bold'>Controles de MPV para YouTube</span>");
+    gtk_label_set_xalign(GTK_LABEL(mpv_heading),0);gtk_box_pack_start(GTK_BOX(body),mpv_heading,FALSE,FALSE,0);
+    GtkWidget *mpv_grid=gtk_grid_new();gtk_grid_set_column_spacing(GTK_GRID(mpv_grid),24);gtk_grid_set_row_spacing(GTK_GRID(mpv_grid),10);
+    static const char *mpv_rows[][2]={
+        {"Espacio / P","Pausar o continuar"},
+        {"← / →","Retroceder / avanzar 5 segundos"},
+        {"[ / ]","Reducir / aumentar la velocidad un 10 %"},
+        {"Retroceso","Volver a la velocidad normal (1×)"},
+        {"9 / 0","Bajar / subir el volumen"},
+        {"M","Silenciar o activar el sonido"},
+        {"F / Esc","Pantalla completa / salir de pantalla completa"},
+        {"V","Mostrar u ocultar subtítulos"},
+        {"Q","Cerrar MPV"}
+    };
+    for(guint i=0;i<G_N_ELEMENTS(mpv_rows);i++){
+        GtkWidget *key=gtk_label_new(mpv_rows[i][0]),*description=gtk_label_new(mpv_rows[i][1]);
+        gtk_widget_set_name(key,"bb-help-key");gtk_label_set_xalign(GTK_LABEL(key),0);gtk_label_set_xalign(GTK_LABEL(description),0);
+        gtk_label_set_line_wrap(GTK_LABEL(description),TRUE);gtk_grid_attach(GTK_GRID(mpv_grid),key,0,i,1,1);gtk_grid_attach(GTK_GRID(mpv_grid),description,1,i,1,1);
+    }
+    gtk_box_pack_start(GTK_BOX(body),mpv_grid,FALSE,FALSE,0);
+    GtkWidget *mpv_note=gtk_label_new("Usá estas teclas en la ventana de MPV. Los videos de YouTube se abren allí automáticamente; «Abrir MPV» permite volver a abrirlos.\nLa página conserva sus recomendaciones y el video no se reproduce en Babinium.\nMPV prefiere audio en español si está disponible. Se necesitan MPV y yt-dlp actualizado; en Debian 13 está disponible en trixie-backports.");
     gtk_label_set_line_wrap(GTK_LABEL(mpv_note),TRUE);gtk_label_set_xalign(GTK_LABEL(mpv_note),0);gtk_box_pack_start(GTK_BOX(body),mpv_note,FALSE,FALSE,0);
     GtkWidget *resolution_row=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,10);
     GtkWidget *resolution_label=gtk_label_new("Resolución de MPV:");
@@ -283,7 +319,11 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_box_pack_start(GTK_BOX(resolution_row),resolution_label,FALSE,FALSE,0);
     gtk_box_pack_start(GTK_BOX(resolution_row),resolution_combo,FALSE,FALSE,0);
     gtk_box_pack_start(GTK_BOX(body),resolution_row,FALSE,FALSE,0);
-    GtkWidget *resolution_note=gtk_label_new("Se aplica al abrir o volver a abrir un video. Si esa calidad no existe, se usa una inferior disponible.");
+    GtkWidget *subtitles_toggle=gtk_check_button_new_with_label("Subtítulos");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(subtitles_toggle),mpv_subtitles);
+    g_signal_connect(subtitles_toggle,"toggled",G_CALLBACK(set_mpv_subtitles),NULL);
+    g_object_set_data(G_OBJECT(t->help),"bb-mpv-subtitles",subtitles_toggle);gtk_box_pack_start(GTK_BOX(body),subtitles_toggle,FALSE,FALSE,0);
+    GtkWidget *resolution_note=gtk_label_new("Los cambios se aplican al abrir o volver a abrir un video. Si esa calidad no existe, se usa una inferior disponible.\nSi activás los subtítulos, se prefiere el español; si no existe, se usa otro idioma disponible.");
     gtk_label_set_line_wrap(GTK_LABEL(resolution_note),TRUE);gtk_label_set_xalign(GTK_LABEL(resolution_note),0);gtk_box_pack_start(GTK_BOX(body),resolution_note,FALSE,FALSE,0);
     GtkWidget *animation_toggle=gtk_check_button_new_with_label("Pausar animaciones lejanas para reducir el uso de CPU");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(animation_toggle),suspend_animations);
@@ -473,7 +513,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.9");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.10");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);
@@ -486,6 +526,11 @@ int main(int argc,char **argv){
         char *text=g_strstrip(resolution_text),*end=NULL;guint64 value=g_ascii_strtoull(text,&end,10);
         if(end!=text&&!*end&&value<=G_MAXUINT&&mpv_resolution_index((guint)value)>=0)mpv_resolution=(guint)value;
         g_free(resolution_text);
+    }
+    mpv_subtitles_path=g_build_filename(profile,"mpv-subtitles",NULL);
+    char *subtitles_text=NULL;
+    if(g_file_get_contents(mpv_subtitles_path,&subtitles_text,NULL,NULL)){
+        mpv_subtitles=!g_strcmp0(g_strstrip(subtitles_text),"1");g_free(subtitles_text);
     }
     animation_optout_path=g_build_filename(profile,"normal-animations",NULL);suspend_animations=!g_file_test(animation_optout_path,G_FILE_TEST_EXISTS);
     disabled=g_hash_table_new_full(g_str_hash,g_str_equal,g_free,NULL);char *txt=NULL;if(g_file_get_contents(sites_path,&txt,NULL,NULL)){char **lines=g_strsplit(txt,"\n",-1);for(char **s=lines;*s;s++)if(**s)g_hash_table_add(disabled,g_strdup(*s));g_strfreev(lines);g_free(txt);}

@@ -38,7 +38,7 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
   dejaron de aplicarse cuando se deshabilitó su reproducción en la página.
 - [x] En videos de YouTube, ofrecer «Abrir MPV» y permitir que MPV continúe
   reproduciendo después de cerrar Babinium. Priorizar audio en español cuando
-  exista, sin cargar subtítulos; no adaptar la elección a un modelo de equipo.
+  exista; no adaptar la elección a un modelo de equipo.
   La versión de yt-dlp de Debian 13 de abril de 2025 falló con un video real; la de
   trixie-backports de octubre de 2026 funcionó y se documentó cómo actualizarla.
 - [ ] Abrir MPV automáticamente una vez al entrar en cada video de YouTube;
@@ -48,6 +48,11 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
   comprobar si la página descarga datos del video.
 - [ ] Ofrecer en la pestaña «Babinium» un selector persistente de resolución de
   MPV entre 144p y 1080p, con 720p por defecto. Pendiente de prueba por Miguel.
+- [ ] Añadir allí un control persistente para cargar subtítulos en MPV,
+  desactivado inicialmente, con preferencia por español y otro idioma solo si
+  no hay español. Pendiente de prueba por Miguel.
+- [ ] Aclarar los controles para videos fuera de YouTube y mostrar en la ayuda
+  los controles básicos de MPV para YouTube. Pendiente de prueba por Miguel.
 - [x] Investigar y reducir cuando sea posible el consumo de CPU en Infobae y
   YouTube, midiendo sin quitar por defecto las funciones solicitadas.
 - [x] Evaluar si un control de JavaScript por sitio merece incorporarse, tras

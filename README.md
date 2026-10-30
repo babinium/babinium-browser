@@ -9,7 +9,8 @@ En versiones anteriores se validaron reproducción real de YouTube, bloqueo de
 solicitudes publicitarias y modificación de datos del reproductor. La eliminación
 de preroll/midroll no quedó demostrada porque el control tampoco mostró anuncios
 de vídeo. Miguel informó que la apertura automática de MPV de la versión 0.4.7
-funciona; el selector de resolución de la 0.4.8 queda pendiente de prueba manual.
+funciona; el selector de resolución y la opción de subtítulos quedan pendientes
+de prueba manual.
 Véanse los informes de [validación 0.4.5](docs/validation-0.4.5.md), [validación 0.4.4](docs/validation-0.4.4.md), [validación 0.4.3](docs/validation-0.4.3.md),
 [validación 0.4.2](docs/validation-0.4.2.md), [validación 0.3.1](docs/validation-0.3.1.md),
 [validación 0.3.0](docs/validation-0.3.md), [validación 0.2](docs/validation-0.2.md) y del
@@ -30,7 +31,9 @@ pedidos y los puntos que todavía requieren pruebas.
   cerrar el reproductor; MPV puede seguir funcionando al cerrar el navegador.
   La resolución se elige entre 144p y 1080p en la pestaña «Babinium»; el valor
   inicial es 720p y la elección se guarda. Prefiere H.264 y audio en español
-  cuando están disponibles, sin subtítulos. Requiere MPV y yt-dlp.
+  cuando están disponibles. Los subtítulos son opcionales, están desactivados por
+  defecto y la elección se guarda: se prefiere el español y, si falta, otro
+  idioma disponible. Requiere MPV y yt-dlp.
 - Para reducir CPU, las animaciones CSS infinitas muy alejadas de la pantalla
   se pausan y vuelven a moverse antes de entrar en la vista. La opción se puede
   desactivar desde la ayuda al pulsar «Babinium»; recargá luego la página.
@@ -57,7 +60,7 @@ sin instalar. Para el bundle se necesitan las dependencias de ejecución del paq
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.4.9_amd64.deb
+sudo apt install ./babinium-browser_0.4.10_amd64.deb
 ```
 
 «Abrir MPV» necesita una versión reciente de `yt-dlp`: la versión de abril de
@@ -73,7 +76,8 @@ videos pueden requerir además la [configuración de JavaScript de yt-dlp](https
 La selección se aplica al abrir o volver a abrir un video. Si la calidad elegida
 no existe, se busca una inferior; si no hay un formato compatible a esa altura o
 menor, MPV informará un error. El español se aplica solo a las pistas disponibles
-en el video.
+en el video. La opción de subtítulos también se aplica al abrir o volver a abrir
+un video; las pistas generadas automáticamente pueden contener errores.
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
 perfiles de prueba independientes. No abrir simultáneamente dos instancias sobre
@@ -98,7 +102,11 @@ clic en el reproductor para enfocarlo. Algunos reproductores, medios protegidos,
 elementos en componentes cerrados o transmisiones pueden limitar estos controles.
 En videos de YouTube incrustados en otros sitios, Babinium prioriza la velocidad
 pedida; su indicador muestra la velocidad real, aunque el menú propio de YouTube
-no coincida por encima de 2×. En MPV se usan los controles propios de MPV.
+no coincida por encima de 2×. En la ventana de MPV se usan sus propios controles:
+espacio o P pausa; las flechas izquierda y derecha retroceden o avanzan; [ y ]
+cambian la velocidad; Retroceso vuelve a 1×; 9 y 0 cambian el volumen; M silencia;
+F y Esc controlan la pantalla completa; V muestra u oculta subtítulos y Q cierra
+MPV. Estos atajos pueden variar si se personalizó la configuración de MPV.
 Después de cambiar la velocidad, el navegador escucha cambios del medio y
 reaplica la elegida si el sitio la restablece, con reintentos limitados y sin
 sondeo continuo. Tras cada cambio manual hace además una sola comprobación

@@ -12,9 +12,10 @@
 #include <unistd.h>
 #include <string.h>
 
-typedef struct { char *path,*url; guint resolution; } Attempt;
-static char *socket_path,*lock_path,*pending;
+typedef struct { char *path,*url; guint resolution; gboolean subtitles; } Attempt;
+static char *socket_path,*lock_path,*pending,*subtitle_helper;
 static guint pending_resolution=720;
+static gboolean pending_subtitles;
 static GSubprocess *player;
 static GWeakRef parent_ref;
 static gboolean have_parent,busy,rechecking;
@@ -75,8 +76,14 @@ static void exchange(GTask *task,gpointer source,gpointer data,GCancellable *can
     char *format=bb_mpv_ytdl_format(a->resolution);
     json_builder_begin_object(b);json_builder_set_member_name(b,"ytdl-format");json_builder_add_string_value(b,format);
     json_builder_set_member_name(b,"alang");json_builder_add_string_value(b,"es,es-419,es-ES");
-    json_builder_set_member_name(b,"sid");json_builder_add_string_value(b,"no");
-    json_builder_set_member_name(b,"ytdl-raw-options");json_builder_add_string_value(b,"sub-langs=^$");
+    json_builder_set_member_name(b,"sid");json_builder_add_string_value(b,a->subtitles?"auto":"no");
+    json_builder_set_member_name(b,"slang");json_builder_add_string_value(b,"es");
+    json_builder_set_member_name(b,"subs-fallback");json_builder_add_string_value(b,"yes");
+    json_builder_set_member_name(b,"subs-with-matching-audio");json_builder_add_string_value(b,"yes");
+    json_builder_set_member_name(b,"ytdl-raw-options");json_builder_add_string_value(b,a->subtitles?"write-auto-subs=,sub-langs=^$":"sub-langs=^$");
+    const char *extractor=a->subtitles?subtitle_helper:"yt-dlp";
+    char *script_opts=g_strdup_printf("ytdl_hook-ytdl_path=%%%zu%%%s",strlen(extractor),extractor);
+    json_builder_set_member_name(b,"script-opts");json_builder_add_string_value(b,script_opts);g_free(script_opts);
     json_builder_end_object(b);json_builder_end_array(b);g_free(format);
     json_builder_set_member_name(b,"request_id");json_builder_add_int_value(b,1);json_builder_end_object(b);
     JsonNode *node=json_builder_get_root(b);JsonGenerator *gen=json_generator_new();json_generator_set_root(gen,node);
@@ -129,11 +136,15 @@ static gboolean start_player(void){
     if(!pending)return FALSE;
     char *ipc=g_strconcat("--input-ipc-server=",socket_path,NULL);
     char *format=bb_mpv_ytdl_format(pending_resolution),*format_arg=g_strconcat("--ytdl-format=",format,NULL);
+    const char *extractor=pending_subtitles?subtitle_helper:"yt-dlp";
+    char *script_opts=g_strdup_printf("--script-opts=ytdl_hook-ytdl_path=%%%zu%%%s",strlen(extractor),extractor);
     const char *argv[]={"mpv","--force-window=immediate","--no-terminal",ipc,format_arg,
-                        BB_MPV_AUDIO_LANGUAGE,BB_MPV_NO_SUBTITLES,BB_MPV_YTDL_NO_SUBTITLES,"--",pending,NULL};
+                        BB_MPV_AUDIO_LANGUAGE,pending_subtitles?BB_MPV_SUBTITLES:BB_MPV_NO_SUBTITLES,
+                        BB_MPV_SUBTITLE_LANGUAGE,BB_MPV_SUBTITLE_FALLBACK,BB_MPV_SUBTITLE_MATCHING_AUDIO,
+                        pending_subtitles?BB_MPV_YTDL_SUBTITLES:BB_MPV_YTDL_NO_SUBTITLES,script_opts,"--",pending,NULL};
     GSubprocessLauncher *launcher=g_subprocess_launcher_new(G_SUBPROCESS_FLAGS_STDOUT_SILENCE|G_SUBPROCESS_FLAGS_STDERR_SILENCE);
     g_subprocess_launcher_set_child_setup(launcher,player_child_setup,NULL,NULL);
-    GError *error=NULL;player=g_subprocess_launcher_spawnv(launcher,argv,&error);g_object_unref(launcher);g_free(ipc);g_free(format_arg);g_free(format);
+    GError *error=NULL;player=g_subprocess_launcher_spawnv(launcher,argv,&error);g_object_unref(launcher);g_free(ipc);g_free(format_arg);g_free(format);g_free(script_opts);
     if(!player){
         char *message=g_strdup_printf("No se pudo iniciar MPV; verificá que esté instalado: %s",error?error->message:"error desconocido");
         g_clear_error(&error);g_clear_pointer(&pending,g_free);unlock_start();show_error(message);g_free(message);return FALSE;
@@ -145,13 +156,13 @@ static void exchange_done(GObject *source,GAsyncResult *result,gpointer unused){
     (void)source;(void)unused;GTask *task=G_TASK(result);Attempt *a=g_task_get_task_data(task);
     int status=g_task_propagate_int(task,NULL);busy=FALSE;
     if(status==1){
-        if(a->url&&!g_strcmp0(a->url,pending)&&a->resolution==pending_resolution)g_clear_pointer(&pending,g_free);
+        if(a->url&&!g_strcmp0(a->url,pending)&&a->resolution==pending_resolution&&a->subtitles==pending_subtitles)g_clear_pointer(&pending,g_free);
         unlock_start();deadline=0;
         if(pending){deadline=g_get_monotonic_time()+10*G_USEC_PER_SEC;try_connection();}
         return;
     }
     if(status==2){
-        if(a->url&&!g_strcmp0(a->url,pending)&&a->resolution==pending_resolution)g_clear_pointer(&pending,g_free);
+        if(a->url&&!g_strcmp0(a->url,pending)&&a->resolution==pending_resolution&&a->subtitles==pending_subtitles)g_clear_pointer(&pending,g_free);
         unlock_start();show_error("MPV no pudo cambiar al video solicitado. Probá con «Abrir MPV» otra vez.");
         if(pending){deadline=g_get_monotonic_time()+10*G_USEC_PER_SEC;try_connection();}
         return;
@@ -171,17 +182,18 @@ static void exchange_done(GObject *source,GAsyncResult *result,gpointer unused){
 static void try_connection(void){
     if(busy)return;
     if(!pending&&lock_fd<0)return;
-    busy=TRUE;Attempt *a=g_new0(Attempt,1);a->path=g_strdup(socket_path);a->url=g_strdup(pending);a->resolution=pending_resolution;
+    busy=TRUE;Attempt *a=g_new0(Attempt,1);a->path=g_strdup(socket_path);a->url=g_strdup(pending);a->resolution=pending_resolution;a->subtitles=pending_subtitles;
     GTask *task=g_task_new(NULL,NULL,exchange_done,NULL);g_task_set_task_data(task,a,free_attempt);
     g_task_run_in_thread(task,exchange);g_object_unref(task);
 }
 
-void mpv_controller_play(GtkWindow *parent,const char *url,guint resolution){
+void mpv_controller_play(GtkWindow *parent,const char *url,guint resolution,gboolean subtitles,const char *lib_dir){
     if(!url||!*url)return;
     if(resolution!=144&&resolution!=240&&resolution!=360&&resolution!=480&&resolution!=720&&resolution!=1080)resolution=720;
     if(!have_parent){g_weak_ref_init(&parent_ref,G_OBJECT(parent));have_parent=TRUE;}
     else g_weak_ref_set(&parent_ref,G_OBJECT(parent));
     if(!prepare_ipc()){show_error("No se pudo preparar la comunicación privada con MPV.");return;}
-    g_free(pending);pending=g_strdup(url);pending_resolution=resolution;deadline=g_get_monotonic_time()+10*G_USEC_PER_SEC;
+    if(!subtitle_helper)subtitle_helper=g_build_filename(lib_dir,"babinium-yt-dlp",NULL);
+    g_free(pending);pending=g_strdup(url);pending_resolution=resolution;pending_subtitles=subtitles;deadline=g_get_monotonic_time()+10*G_USEC_PER_SEC;
     if(!busy&&!retry_source)try_connection();
 }

@@ -21,8 +21,14 @@ static inline char *bb_mpv_ytdl_format(guint height){
 }
 #define BB_MPV_AUDIO_LANGUAGE "--alang=es,es-419,es-ES"
 #define BB_MPV_NO_SUBTITLES "--sid=no"
+#define BB_MPV_SUBTITLES "--sid=auto"
+#define BB_MPV_SUBTITLE_LANGUAGE "--slang=es"
+#define BB_MPV_SUBTITLE_FALLBACK "--subs-fallback=yes"
+#define BB_MPV_SUBTITLE_MATCHING_AUDIO "--subs-with-matching-audio=yes"
 /* MPV's yt-dlp hook always adds --write-srt after raw options. An empty-match
  * language expression prevents any subtitle tracks from being requested. */
 #define BB_MPV_YTDL_NO_SUBTITLES "--ytdl-raw-options=sub-langs=^$"
+/* The helper chooses one Spanish track, or one other track as a fallback. */
+#define BB_MPV_YTDL_SUBTITLES "--ytdl-raw-options=write-auto-subs=,sub-langs=^$"
 
 #endif
