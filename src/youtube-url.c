@@ -15,6 +15,24 @@ static gboolean domain_is(const char *host,const char *domain){
     return h>d&&host[h-d-1]=='.'&&!g_ascii_strcasecmp(host+h-d,domain);
 }
 
+gboolean youtube_site_url(const char *uri){
+    GUri *u=g_uri_parse(uri?uri:"",G_URI_FLAGS_PARSE_RELAXED,NULL);
+    if(!u)return FALSE;
+    const char *scheme=g_uri_get_scheme(u),*host=g_uri_get_host(u);
+    gboolean yes=scheme&&host&&(!g_ascii_strcasecmp(scheme,"http")||!g_ascii_strcasecmp(scheme,"https"))&&
+        (domain_is(host,"youtube.com")||domain_is(host,"youtube-nocookie.com")||domain_is(host,"youtu.be"));
+    g_uri_unref(u);return yes;
+}
+
+gboolean youtube_media_url(const char *uri){
+    GUri *u=g_uri_parse(uri?uri:"",G_URI_FLAGS_PARSE_RELAXED,NULL);
+    if(!u)return FALSE;
+    const char *host=g_uri_get_host(u),*path=g_uri_get_path(u);
+    gboolean yes=host&&(domain_is(host,"googlevideo.com")||
+        (domain_is(host,"youtube.com")&&path&&g_str_has_prefix(path,"/api/manifest/")));
+    g_uri_unref(u);return yes;
+}
+
 char *youtube_video_url(const char *uri){
     GUri *u=g_uri_parse(uri?uri:"",G_URI_FLAGS_PARSE_RELAXED|G_URI_FLAGS_ENCODED_QUERY,NULL);
     if(!u)return NULL;

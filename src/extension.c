@@ -5,13 +5,14 @@
 #include <libsoup/soup.h>
 #include <gmodule.h>
 #include "blocker.h"
+#include "youtube-url.h"
 
 static BbEngine *engine;
 static char *index_path, *resources_path, *cosmetic_js;
 static GHashTable *disabled;
 static gboolean bypass, audit;
 static WebKitScriptWorld *cosmetic_world;
-typedef struct { WebKitWebPage *page; guint64 checked, blocked, scripts; guint timer; } Page;
+typedef struct { WebKitWebPage *page; guint64 checked, blocked, scripts; guint timer; char *top_uri; gboolean youtube; } Page;
 
 static char *hostname(const char *url) {
     GUri *u=g_uri_parse(url ? url : "",G_URI_FLAGS_PARSE_RELAXED,NULL);
@@ -35,7 +36,7 @@ static gboolean report(gpointer data) {
     webkit_web_page_send_message_to_view(p->page,m,NULL,NULL,NULL); return G_SOURCE_REMOVE;
 }
 static void changed(Page *p) { if(!p->timer) p->timer=g_timeout_add(400,report,p); }
-static void free_page(gpointer data) { Page *p=data; if(p->timer)g_source_remove(p->timer); g_free(p); }
+static void free_page(gpointer data) { Page *p=data; if(p->timer)g_source_remove(p->timer);g_free(p->top_uri);g_free(p); }
 
 /* send-request has no public resource/frame type. Prefer Fetch Metadata, then
  * headers/suffix. Unknown requests remain 'other'; do not match all types. */
@@ -71,9 +72,12 @@ static const char *request_type(WebKitWebPage *page,WebKitURIRequest *req) {
 }
 static gboolean send_request(WebKitWebPage *page,WebKitURIRequest *req,WebKitURIResponse *response,Page *p) {
     (void)response;
-    if(!enabled(page))return FALSE;
     const char *url=webkit_uri_request_get_uri(req),*top=webkit_web_page_get_uri(page);
     if(!url||(!g_str_has_prefix(url,"http://")&&!g_str_has_prefix(url,"https://")))return FALSE;
+    if(g_strcmp0(top,p->top_uri)){g_free(p->top_uri);p->top_uri=g_strdup(top);p->youtube=youtube_site_url(top);}
+    /* Only the YouTube page is affected. MPV's own traffic is independent. */
+    if(p->youtube&&youtube_media_url(url))return TRUE;
+    if(!enabled(page))return FALSE;
     SoupMessageHeaders *h=webkit_uri_request_get_http_headers(req);
     const char *ref=h?soup_message_headers_get_one(h,"Referer"):NULL;
     const char *type=request_type(page,req);

@@ -5,9 +5,11 @@ Prototipo de navegador libre para Debian 13, escrito en C/GTK 3, con WebKitGTK
 la simplicidad de surf; la interfaz es nueva. Licencia GPL-3.0-o-posterior.
 
 **Estado: experimental.** No se presenta como el navegador de menor consumo.
-Se validaron reproducción real de YouTube, bloqueo de solicitudes publicitarias
-y modificación de datos del reproductor. La eliminación de preroll/midroll no
-quedó demostrada porque el control tampoco mostró anuncios de vídeo.
+En versiones anteriores se validaron reproducción real de YouTube, bloqueo de
+solicitudes publicitarias y modificación de datos del reproductor. La eliminación
+de preroll/midroll no quedó demostrada porque el control tampoco mostró anuncios
+de vídeo. El comportamiento de YouTube con MPV automático de la versión 0.4.7
+queda pendiente de prueba manual.
 Véanse los informes de [validación 0.4.5](docs/validation-0.4.5.md), [validación 0.4.4](docs/validation-0.4.4.md), [validación 0.4.3](docs/validation-0.4.3.md),
 [validación 0.4.2](docs/validation-0.4.2.md), [validación 0.3.1](docs/validation-0.3.1.md),
 [validación 0.3.0](docs/validation-0.3.md), [validación 0.2](docs/validation-0.2.md) y del
@@ -22,10 +24,12 @@ pedidos y los puntos que todavía requieren pruebas.
 - Control integrado de velocidad para medios HTML5, con indicador y los atajos de
   [Video Speed Controller](https://github.com/igrigorik/videospeed). Al pulsar
   «Babinium» se abre una pestaña de ayuda GTK.
-- En videos de YouTube, «Abrir MPV» abre el video en un reproductor separado;
-  requiere MPV y yt-dlp y sigue funcionando si se cierra el navegador. Prefiere
-  1080p, o 720p si no hay 1080p, y H.264 cuando está disponible. Prioriza audio
-  en español si se ofrece y no carga subtítulos.
+- Al abrir un video de YouTube, Babinium mantiene la página abierta, deshabilita
+  su reproducción y abre el video automáticamente en MPV. Otro video reemplaza
+  al anterior en el mismo MPV. «Abrir MPV» permite volver a abrir el video tras
+  cerrar el reproductor; MPV puede seguir funcionando al cerrar el navegador.
+  Prefiere 1080p, o 720p si no hay 1080p, H.264 y audio en español cuando están
+  disponibles, sin subtítulos. Requiere MPV y yt-dlp.
 - Para reducir CPU, las animaciones CSS infinitas muy alejadas de la pantalla
   se pausan y vuelven a moverse antes de entrar en la vista. La opción se puede
   desactivar desde la ayuda al pulsar «Babinium»; recargá luego la página.
@@ -52,7 +56,7 @@ sin instalar. Para el bundle se necesitan las dependencias de ejecución del paq
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.4.6_amd64.deb
+sudo apt install ./babinium-browser_0.4.7_amd64.deb
 ```
 
 «Abrir MPV» necesita una versión reciente de `yt-dlp`: la versión de abril de
@@ -90,31 +94,22 @@ también ofrece botones −/+. Los atajos no se activan mientras se escribe ni c
 Ctrl, Alt, Super o Mayúsculas. Para medios en un iframe de otro origen, hacé
 clic en el reproductor para enfocarlo. Algunos reproductores, medios protegidos,
 elementos en componentes cerrados o transmisiones pueden limitar estos controles.
-En YouTube, Babinium prioriza la velocidad pedida; su indicador muestra la
-velocidad real, aunque el menú propio de YouTube no coincida por encima de 2×.
+En videos de YouTube incrustados en otros sitios, Babinium prioriza la velocidad
+pedida; su indicador muestra la velocidad real, aunque el menú propio de YouTube
+no coincida por encima de 2×. En MPV se usan los controles propios de MPV.
 Después de cambiar la velocidad, el navegador escucha cambios del medio y
 reaplica la elegida si el sitio la restablece, con reintentos limitados y sin
 sondeo continuo. Tras cada cambio manual hace además una sola comprobación
 breve para cubrir avisos de cambio perdidos. Si un reproductor la fuerza
 repetidamente, puede prevalecer su límite.
 
-YouTube recibe una preferencia inicial de 360p mediante un método interno del
-reproductor, que YouTube puede cambiar o ignorar. El usuario puede elegir otra
-calidad en el reproductor. El navegador consulta `MediaCapabilities` para 360p:
-si informa que H.264 es fluido y eficiente, y que VP9 o AV1 no lo son, intenta
-priorizar H.264 para ese sitio. Si la reproducción ya comenzó o no se obtiene una
-respuesta útil, mantiene la elección normal del motor.
-Si un vídeo no ofrece H.264 o falla el elemento de vídeo, reintenta una vez con
-la negociación normal. WebKit/GStreamer pueden utilizar decodificación por
-hardware si está configurada, pero las capacidades informadas no garantizan un
-menor consumo. Para reducir el trabajo del compositor, en la primera reproducción
-se intenta desactivar la iluminación cinemática mediante el propio ajuste de
-YouTube. Se reconoce el menú en inglés y español: si el menú cambia o usa otro
-idioma, se deja intacto. Después se respeta la elección manual del usuario,
-incluso tras reiniciar; este ajuste inicial también se intenta una vez en un
-perfil preexistente. YouTube podría cambiar su interfaz interna. La persistencia
-del perfil no garantiza que Google acepte iniciar
-sesión en todos los navegadores integrados.
+En páginas de YouTube se deshabilita la reproducción multimedia de WebKit y se
+bloquean las solicitudes de video conocidas hacia Googlevideo y los manifiestos
+de YouTube. Esto no bloquea el tráfico independiente de MPV ni los videos de
+otros sitios. YouTube puede cambiar su implementación: la carga de sus
+recomendaciones y la ausencia de solicitudes de video necesitan prueba manual.
+La persistencia del perfil no garantiza que Google acepte iniciar sesión en
+todos los navegadores integrados.
 
 ## Arquitectura y límites
 

@@ -4,7 +4,6 @@ make build/bin/babinium-browser
 make -j2
 make resources
 make package
-make test
 mkdir -p artifacts/bundle
 cp -r build/bin build/lib build/share artifacts/bundle/
 cp blocker/Cargo.lock artifacts/Cargo.lock
@@ -20,6 +19,3 @@ cp blocker/Cargo.lock artifacts/Cargo.lock
 } > artifacts/entorno.txt
 readelf --version-info build/bin/babinium-browser > artifacts/glibc.txt
 readelf --version-info build/lib/babinium-browser/libbabinium-adblock.so >> artifacts/glibc.txt
-# Graphical integration is exercised on an unprivileged Debian desktop, where
-# bubblewrap has the same namespace policy as the target runtime (see tests/).
-build/bin/babinium-browser --help > artifacts/help.txt

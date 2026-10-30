@@ -9,9 +9,9 @@
 #include <unistd.h>
 #include "site-name.h"
 #include "youtube-url.h"
-#include "mpv-options.h"
+#include "mpv-controller.h"
 
-typedef struct Tab { GtkWidget *view,*label,*box,*placeholder,*help; char *youtube_url; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
+typedef struct Tab { GtkWidget *view,*label,*box,*placeholder,*help; char *youtube_url,*last_auto_url; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
 static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*dark_button,*favorite_button,*favorites_box,*favorites_pop,*favorites_scroll,*downloads_box,*downloads_pop,*list_status,*mpv_button;
 static WebKitWebContext *context;
 static WebKitUserContentManager *content;
@@ -32,6 +32,7 @@ static void install_scripts(void);
 static void toggle_favorite(GtkButton *button,gpointer unused);
 static void extension_init(WebKitWebContext *ctx,gpointer unused);
 static void extension_data(WebKitWebContext *ctx);
+static void media_for_uri(WebKitWebView *v,const char *uri);
 
 static Tab *current(void){int n=gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));return n<0?NULL:g_object_get_data(G_OBJECT(gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook),n)),"tab");}
 static void log_event(const char *event,const char *value) {
@@ -89,19 +90,30 @@ static void go(Tab *t,const char *input) {
     if(scheme&&(strstr(text,"://")||g_ascii_strcasecmp(scheme,"about")==0||g_ascii_strcasecmp(scheme,"file")==0||g_ascii_strcasecmp(scheme,"data")==0))url=g_strdup(text);
     else if(strchr(text,' ')||(scheme&&!g_ascii_isdigit(strchr(text,':')[1]))||(!strchr(text,'.')&&!strchr(text,':')&&strcmp(text,"localhost"))){char *q=g_uri_escape_string(text,NULL,TRUE);url=g_strconcat("https://www.google.com/search?q=",q,NULL);g_free(q);}
     else url=g_strconcat("https://",text,NULL);
-    if(strcmp(url,"about:blank")||t->view){if(!t->view)attach_view(t,NULL);webkit_web_view_load_uri(WEBKIT_WEB_VIEW(t->view),url);}
+    if(strcmp(url,"about:blank")||t->view){if(!t->view)attach_view(t,NULL);media_for_uri(WEBKIT_WEB_VIEW(t->view),url);webkit_web_view_load_uri(WEBKIT_WEB_VIEW(t->view),url);}
     g_free(url);g_free(text);
 }
 static void entry_activate(GtkEntry *e,gpointer unused){(void)unused;Tab *t=current();if(t){go(t,gtk_entry_get_text(e));if(t->view)gtk_widget_grab_focus(t->view);}}
 static void title_changed(GObject *obj,GParamSpec *ps,Tab *t){(void)ps;const char *s=webkit_web_view_get_title(WEBKIT_WEB_VIEW(obj));gtk_label_set_text(GTK_LABEL(t->label),s?s:"Nueva pestaña");if(t==current())refresh_controls();}
 static void changed(GObject *obj,GParamSpec *ps,Tab *t){(void)obj;(void)ps;if(t==current())refresh_controls();}
+static void media_for_uri(WebKitWebView *v,const char *uri){
+    WebKitSettings *settings=webkit_web_view_get_settings(v);gboolean enabled=!youtube_site_url(uri);
+    if(webkit_settings_get_enable_media(settings)!=enabled)webkit_settings_set_enable_media(settings,enabled);
+}
 static void uri_changed(GObject *obj,GParamSpec *ps,Tab *t){
-    (void)ps;g_free(t->youtube_url);t->youtube_url=youtube_video_url(webkit_web_view_get_uri(WEBKIT_WEB_VIEW(obj)));
+    (void)ps;WebKitWebView *v=WEBKIT_WEB_VIEW(obj);const char *uri=webkit_web_view_get_uri(v);
+    media_for_uri(v,uri);g_free(t->youtube_url);t->youtube_url=youtube_video_url(uri);
+    if(t->youtube_url){
+        if(g_strcmp0(t->youtube_url,t->last_auto_url)){
+            g_free(t->last_auto_url);t->last_auto_url=g_strdup(t->youtube_url);
+            mpv_controller_play(GTK_WINDOW(window),t->youtube_url);
+        }
+    }else if(uri&&*uri)g_clear_pointer(&t->last_auto_url,g_free);
     if(t==current())refresh_controls();
 }
 static void load_changed(WebKitWebView *v,WebKitLoadEvent event,Tab *t){
-    if(event==WEBKIT_LOAD_STARTED)log_event("load_started",webkit_web_view_get_uri(v));
-    if(event==WEBKIT_LOAD_COMMITTED)log_event("load_committed",webkit_web_view_get_uri(v));
+    if(event==WEBKIT_LOAD_STARTED){media_for_uri(v,webkit_web_view_get_uri(v));log_event("load_started",webkit_web_view_get_uri(v));}
+    if(event==WEBKIT_LOAD_COMMITTED){uri_changed(G_OBJECT(v),NULL,t);log_event("load_committed",webkit_web_view_get_uri(v));}
     if(event==WEBKIT_LOAD_FINISHED)log_event("load_finished",webkit_web_view_get_uri(v));
     if(t==current())refresh_controls();
 }
@@ -123,7 +135,7 @@ static gboolean page_message(WebKitWebView *v,WebKitUserMessage *m,Tab *t){
 }
 static void close_tab(GtkWidget *button,Tab *t){
     (void)button;int n=gtk_notebook_page_num(GTK_NOTEBOOK(notebook),t->box);if(n<0)return;
-    g_ptr_array_remove(tabs,t);gtk_notebook_remove_page(GTK_NOTEBOOK(notebook),n);g_free(t->youtube_url);g_free(t);
+    g_ptr_array_remove(tabs,t);gtk_notebook_remove_page(GTK_NOTEBOOK(notebook),n);g_free(t->youtube_url);g_free(t->last_auto_url);g_free(t);
     if(!tabs->len)gtk_widget_destroy(window);else refresh_controls();
 }
 static Tab *new_tab(const char *uri,gboolean select);
@@ -139,13 +151,16 @@ static void attach_view(Tab *t,WebKitWebView *related){
     if(t->help){gtk_widget_destroy(t->help);t->help=NULL;}
     t->view=related?webkit_web_view_new_with_related_view(related):GTK_WIDGET(g_object_new(WEBKIT_TYPE_WEB_VIEW,"web-context",context,"user-content-manager",content,NULL));
     GdkRGBA black={0,0,0,1};webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(t->view),&black);
-    WebKitSettings *s=webkit_web_view_get_settings(WEBKIT_WEB_VIEW(t->view));
+    /* Related views otherwise share settings; YouTube's media policy must not
+       disable audio or video in other tabs. */
+    WebKitSettings *s=webkit_settings_new();webkit_web_view_set_settings(WEBKIT_WEB_VIEW(t->view),s);
     webkit_settings_set_enable_developer_extras(s,audit);
     webkit_settings_set_media_playback_requires_user_gesture(s,!autoplay);
     if(autoplay)webkit_web_view_set_is_muted(WEBKIT_WEB_VIEW(t->view),TRUE);
     webkit_settings_set_enable_page_cache(s,FALSE); /* Avoid retained back/forward DOMs. */
     webkit_settings_set_enable_dns_prefetching(s,FALSE);
     webkit_settings_set_javascript_can_open_windows_automatically(s,FALSE);
+    g_object_unref(s);
     gtk_box_pack_start(GTK_BOX(t->box),t->view,TRUE,TRUE,0);
     g_signal_connect(t->view,"notify::title",G_CALLBACK(title_changed),t);
     g_signal_connect(t->view,"notify::uri",G_CALLBACK(uri_changed),t);
@@ -176,30 +191,9 @@ static Tab *new_tab(const char *uri,gboolean select){
 static void switch_page(GtkNotebook *n,GtkWidget *page,guint num,gpointer unused){(void)n;(void)page;(void)num;(void)unused;Tab *t=current();const char *uri=t&&t->view?webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)):NULL;gtk_entry_set_text(GTK_ENTRY(address),uri?uri:"");refresh_controls();}
 static void navigate(GtkButton *b,gpointer which){(void)b;Tab *t=current();if(!t||!t->view)return;WebKitWebView *v=WEBKIT_WEB_VIEW(t->view);switch(GPOINTER_TO_INT(which)){case 0:webkit_web_view_go_back(v);break;case 1:webkit_web_view_go_forward(v);break;default:if(webkit_web_view_is_loading(v))webkit_web_view_stop_loading(v);else webkit_web_view_reload(v);}}
 static void add_tab(GtkButton *b,gpointer unused){(void)b;(void)unused;new_tab("about:blank",TRUE);gtk_entry_set_text(GTK_ENTRY(address),"");gtk_widget_grab_focus(address);}
-static void mpv_child_setup(gpointer unused){(void)unused;setsid();}
-static void mpv_finished(GObject *object,GAsyncResult *result,gpointer data){
-    GWeakRef *parent=data;GError *error=NULL;GSubprocess *p=G_SUBPROCESS(object);
-    if(!g_subprocess_wait_check_finish(p,result,&error)&&g_subprocess_get_if_exited(p)){
-        GtkWidget *w=GTK_WIDGET(g_weak_ref_get(parent));
-        if(w&&!gtk_widget_in_destruction(w)){
-            GtkWidget *dialog=gtk_message_dialog_new(GTK_WINDOW(w),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_CLOSE,
-                "%s","MPV no pudo reproducir el video. Revisá tu conexión, si el video requiere iniciar sesión y que yt-dlp esté actualizado. En Debian 13, podés actualizar yt-dlp desde trixie-backports.");
-            gtk_dialog_run(GTK_DIALOG(dialog));gtk_widget_destroy(dialog);
-        }
-        if(w)g_object_unref(w);
-    }
-    g_clear_error(&error);g_weak_ref_clear(parent);g_free(parent);
-}
 static void open_mpv(GtkButton *button,gpointer unused){
     (void)button;(void)unused;Tab *t=current();if(!t||!t->youtube_url)return;
-    const char *argv[]={"mpv","--force-window=immediate","--no-terminal",BB_MPV_YTDL_ARGUMENT,
-                        BB_MPV_AUDIO_LANGUAGE,BB_MPV_NO_SUBTITLES,BB_MPV_YTDL_NO_SUBTITLES,"--",t->youtube_url,NULL};
-    GSubprocessLauncher *launcher=g_subprocess_launcher_new(G_SUBPROCESS_FLAGS_STDOUT_SILENCE|G_SUBPROCESS_FLAGS_STDERR_SILENCE);
-    g_subprocess_launcher_set_child_setup(launcher,mpv_child_setup,NULL,NULL);
-    GError *error=NULL;GSubprocess *p=g_subprocess_launcher_spawnv(launcher,argv,&error);g_object_unref(launcher);
-    if(!p){file_error("No se pudo iniciar MPV; verificá que esté instalado",error);g_clear_error(&error);return;}
-    GWeakRef *parent=g_new0(GWeakRef,1);g_weak_ref_init(parent,G_OBJECT(window));
-    g_subprocess_wait_check_async(p,NULL,mpv_finished,parent);g_object_unref(p);
+    mpv_controller_play(GTK_WINDOW(window),t->youtube_url);
 }
 static void toggle_animations(GtkToggleButton *button,gpointer unused){
     (void)unused;if(setting_animations)return;
@@ -250,7 +244,7 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_box_pack_start(GTK_BOX(body),grid,FALSE,FALSE,0);
     GtkWidget *note=gtk_label_new("Los atajos controlan el video o audio activo y no se aplican mientras escribís.\nSi el reproductor está incrustado, hacé clic en él para darle el foco.\nAlgunos reproductores o contenidos pueden limitar la velocidad.");
     gtk_label_set_line_wrap(GTK_LABEL(note),TRUE);gtk_label_set_xalign(GTK_LABEL(note),0);gtk_box_pack_start(GTK_BOX(body),note,FALSE,FALSE,0);
-    GtkWidget *mpv_note=gtk_label_new("En un video de YouTube, «Abrir MPV» lo abre en una ventana independiente.\nPrefiere 1080p o 720p y audio en español si está disponible; sin subtítulos.\nSe necesitan MPV y yt-dlp actualizado; en Debian 13 está disponible en trixie-backports.");
+    GtkWidget *mpv_note=gtk_label_new("Los videos de YouTube se abren automáticamente en MPV; «Abrir MPV» permite volver a abrirlos.\nLa página conserva sus recomendaciones y el video no se reproduce en Babinium.\nMPV prefiere 1080p o 720p y audio en español si está disponible; sin subtítulos.\nSe necesitan MPV y yt-dlp actualizado; en Debian 13 está disponible en trixie-backports.");
     gtk_label_set_line_wrap(GTK_LABEL(mpv_note),TRUE);gtk_label_set_xalign(GTK_LABEL(mpv_note),0);gtk_box_pack_start(GTK_BOX(body),mpv_note,FALSE,FALSE,0);
     GtkWidget *animation_toggle=gtk_check_button_new_with_label("Pausar animaciones lejanas para reducir el uso de CPU");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(animation_toggle),suspend_animations);
@@ -389,12 +383,10 @@ static gboolean screenshot(gpointer unused){(void)unused;GdkWindow *gw=gtk_widge
 static GtkWidget *button(const char *label,GCallback cb,gpointer data){GtkWidget *b=gtk_button_new_with_label(label);g_signal_connect(b,"clicked",cb,data);gtk_box_pack_start(GTK_BOX(toolbar),b,FALSE,FALSE,0);return b;}
 static void install_scripts(void){
     if(!content)return;
-    static char *dark_js,*youtube_js,*ambient_js,*speed_js,*speed_youtube_js,*animation_js;
+    static char *dark_js,*speed_js,*speed_youtube_js,*animation_js;
     static const char *youtube_uris[]={"http://youtube.com/*","https://youtube.com/*","http://*.youtube.com/*","https://*.youtube.com/*",NULL};
     static const char *speed_youtube_uris[]={"http://youtube.com/*","https://youtube.com/*","http://*.youtube.com/*","https://*.youtube.com/*","http://youtube-nocookie.com/*","https://youtube-nocookie.com/*","http://*.youtube-nocookie.com/*","https://*.youtube-nocookie.com/*",NULL};
     if(!dark_js){char *path=g_build_filename(data_dir,"darkreader.js",NULL);if(!g_file_get_contents(path,&dark_js,NULL,NULL))g_warning("Falta Dark Reader: %s",path);g_free(path);}
-    if(!youtube_js){char *path=g_build_filename(data_dir,"youtube.js",NULL);if(!g_file_get_contents(path,&youtube_js,NULL,NULL))g_warning("Falta la preferencia de YouTube: %s",path);g_free(path);}
-    if(!ambient_js){char *path=g_build_filename(data_dir,"youtube-ambient.js",NULL);if(!g_file_get_contents(path,&ambient_js,NULL,NULL))g_warning("Falta la preferencia de modo ambiente: %s",path);g_free(path);}
     if(!speed_js){char *path=g_build_filename(data_dir,"video-speed.js",NULL);if(!g_file_get_contents(path,&speed_js,NULL,NULL))g_warning("Falta el control de velocidad: %s",path);g_free(path);}
     if(!speed_youtube_js){char *path=g_build_filename(data_dir,"video-speed-youtube.js",NULL);if(!g_file_get_contents(path,&speed_youtube_js,NULL,NULL))g_warning("Falta el adaptador de velocidad de YouTube: %s",path);g_free(path);}
     if(!animation_js){char *path=g_build_filename(data_dir,"offscreen-animations.js",NULL);if(!g_file_get_contents(path,&animation_js,NULL,NULL))g_warning("Falta la optimización de animaciones: %s",path);g_free(path);}
@@ -406,8 +398,6 @@ static void install_scripts(void){
         WebKitUserScript *u=webkit_user_script_new_for_world(script,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_END,"babinium-dark",NULL,youtube_uris);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);
         g_free(script);g_free(list);json_node_free(node);g_object_unref(gen);g_object_unref(b);
     }
-    if(youtube_js){WebKitUserScript *u=webkit_user_script_new(youtube_js,WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,youtube_uris,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
-    if(ambient_js){WebKitUserScript *u=webkit_user_script_new(ambient_js,WEBKIT_USER_CONTENT_INJECT_TOP_FRAME,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,youtube_uris,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
     if(speed_youtube_js){WebKitUserScript *u=webkit_user_script_new(speed_youtube_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,speed_youtube_uris,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
     if(speed_js){WebKitUserScript *u=webkit_user_script_new_for_world(speed_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,"babinium-speed",NULL,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
     if(suspend_animations&&animation_js){WebKitUserScript *u=webkit_user_script_new_for_world(animation_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,"babinium-animations",NULL,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
@@ -444,7 +434,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.6");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.7");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);

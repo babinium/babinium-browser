@@ -33,21 +33,19 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
 - [ ] Validar bloqueo de anuncios de vídeo de YouTube frente a una reproducción
   de control donde efectivamente aparezca un anuncio; la prueba anterior observó
   eliminación de datos publicitarios, pero no pudo confirmar un preroll real.
-- [x] Configurar YouTube por defecto para priorizar consumo bajo y fluidez,
-  incluyendo calidad y códecs cuando sea técnicamente posible; medir el efecto,
-  conservar la reproducción y permitir que el usuario cambie la calidad. La
-  preferencia de resolución usa un método interno que YouTube puede cambiar; la
-  selección de códec es tentativa y no se demostró una mejora general de CPU.
-- [x] Intentar desactivar inicialmente la iluminación cinemática de YouTube
-  para reducir el trabajo gráfico, manteniendo el ajuste manual y su persistencia.
-  Los menús reconocidos son inglés y español; si YouTube cambia la interfaz o
-  usa otro idioma, se mantiene su comportamiento normal.
+- [x] Priorizar consumo bajo y fluidez en YouTube, con resolución y códec
+  preferidos en MPV. Las anteriores preferencias del reproductor de YouTube
+  dejaron de aplicarse cuando se deshabilitó su reproducción en la página.
 - [x] En videos de YouTube, ofrecer «Abrir MPV» y permitir que MPV continúe
   reproduciendo después de cerrar Babinium. Por defecto, preferir 1080p y, si
   falta, 720p o una calidad inferior, y priorizar audio en español cuando
   exista, sin cargar subtítulos; no adaptar la elección a un modelo de equipo.
   La versión de yt-dlp de Debian 13 de abril de 2025 falló con un video real; la de
   trixie-backports de octubre de 2026 funcionó y se documentó cómo actualizarla.
+- [ ] Abrir MPV automáticamente una vez al entrar en cada video de YouTube;
+  dejar la página y sus recomendaciones abiertas, impedir su reproducción y
+  reemplazar el video actual en MPV al elegir otro. Tras cerrar MPV, el botón
+  lo vuelve a abrir. Solo aplica a YouTube. Pendiente de prueba manual por Miguel.
 - [x] Investigar y reducir cuando sea posible el consumo de CPU en Infobae y
   YouTube, midiendo sin quitar por defecto las funciones solicitadas.
 - [x] Evaluar si un control de JavaScript por sitio merece incorporarse, tras

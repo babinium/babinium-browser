@@ -15,13 +15,13 @@ build/bin/babinium-filter: $(RUSTLIB)
 	mkdir -p $(@D)
 	cp blocker/target/release/babinium-filter $@
 
-build/bin/babinium-browser: src/browser.c src/site-name.c src/site-name.h src/youtube-url.c src/youtube-url.h src/mpv-options.h
+build/bin/babinium-browser: src/browser.c src/site-name.c src/site-name.h src/youtube-url.c src/youtube-url.h src/mpv-controller.c src/mpv-controller.h src/mpv-options.h
 	mkdir -p $(@D)
-	$(CC) $(CFLAGS) src/browser.c src/site-name.c src/youtube-url.c -o $@ $$(pkg-config --cflags --libs $(UI_PKGS)) -Wl,--gc-sections
+	$(CC) $(CFLAGS) src/browser.c src/site-name.c src/youtube-url.c src/mpv-controller.c -o $@ $$(pkg-config --cflags --libs $(UI_PKGS)) -Wl,--gc-sections
 
-build/lib/babinium-browser/libbabinium-adblock.so: src/extension.c src/blocker.h $(RUSTLIB)
+build/lib/babinium-browser/libbabinium-adblock.so: src/extension.c src/blocker.h src/youtube-url.c src/youtube-url.h $(RUSTLIB)
 	mkdir -p $(@D)
-	$(CC) $(CFLAGS) -fPIC -shared src/extension.c $(RUSTLIB) -o $@ $$(pkg-config --cflags --libs $(EXT_PKGS)) -Wl,--gc-sections -ldl -lpthread -lm
+	$(CC) $(CFLAGS) -fPIC -shared src/extension.c src/youtube-url.c $(RUSTLIB) -o $@ $$(pkg-config --cflags --libs $(EXT_PKGS)) -Wl,--gc-sections -ldl -lpthread -lm
 
 build/bin/babinium-filter-update: scripts/filter-update.py
 	mkdir -p $(@D)
@@ -30,7 +30,7 @@ build/bin/babinium-filter-update: scripts/filter-update.py
 resources: all
 	python3 scripts/prepare-resources.py
 	python3 scripts/license-notices.py
-	cp data/cosmetic.js data/youtube.js data/youtube-ambient.js data/video-speed.js data/video-speed-youtube.js data/offscreen-animations.js data/sources.json data/upstream.json build/share/babinium-browser/
+	cp data/cosmetic.js data/video-speed.js data/video-speed-youtube.js data/offscreen-animations.js data/sources.json data/upstream.json build/share/babinium-browser/
 
 build/tests/test-site-name: tests/test-site-name.c src/site-name.c src/site-name.h
 	mkdir -p $(@D)
