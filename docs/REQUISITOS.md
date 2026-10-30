@@ -62,6 +62,8 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
 - [x] Modo oscuro de páginas activado por defecto, con la API de Dark Reader y
   un control por sitio cuando un diseño resulte incompatible.
 - [x] Mostrar «Babinium» al extremo derecho de la barra de pestañas.
+- [ ] Añadir un engranaje al botón y titular la sección «Controles de velocidad
+  para videos»; pendiente de comprobación por Miguel.
 - [x] Mostrar negro desde el primer instante en una pestaña nueva vacía.
 - [x] Permitir guardar, consultar y quitar favoritos y conservarlos al cerrar.
 - [x] Ampliar el panel de favoritos y permitir leer los títulos en varias

@@ -18,7 +18,7 @@ La [lista de requisitos y su estado](docs/REQUISITOS.md) conserva todos los
 pedidos y los puntos que todavía requieren pruebas.
 
 - Barra de direcciones con búsqueda Google, atrás/adelante, pestañas y descargas.
-- Pestañas vacías negras y «Babinium» en el extremo derecho de la barra.
+- Pestañas vacías negras y «Babinium ⚙» en el extremo derecho de la barra.
 - Favoritos en el perfil, con estrella y panel amplio de títulos y nombres de
   sitio; cookies y datos de sitios persistentes entre reinicios.
 - Control integrado de velocidad para medios HTML5, con indicador y los atajos de
@@ -57,7 +57,7 @@ sin instalar. Para el bundle se necesitan las dependencias de ejecución del paq
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.4.8_amd64.deb
+sudo apt install ./babinium-browser_0.4.9_amd64.deb
 ```
 
 «Abrir MPV» necesita una versión reciente de `yt-dlp`: la versión de abril de

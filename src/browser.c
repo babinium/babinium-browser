@@ -250,7 +250,7 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_widget_set_halign(body,GTK_ALIGN_CENTER);gtk_widget_set_valign(body,GTK_ALIGN_START);
     GtkWidget *heading=gtk_label_new(NULL);gtk_label_set_markup(GTK_LABEL(heading),"<span size='xx-large' weight='bold'>Babinium</span>");
     gtk_label_set_xalign(GTK_LABEL(heading),0);gtk_box_pack_start(GTK_BOX(body),heading,FALSE,FALSE,0);
-    GtkWidget *subtitle=gtk_label_new(NULL);gtk_label_set_markup(GTK_LABEL(subtitle),"<span size='large' weight='bold'>Controles de velocidad</span>");
+    GtkWidget *subtitle=gtk_label_new(NULL);gtk_label_set_markup(GTK_LABEL(subtitle),"<span size='large' weight='bold'>Controles de velocidad para videos</span>");
     gtk_label_set_xalign(GTK_LABEL(subtitle),0);gtk_box_pack_start(GTK_BOX(body),subtitle,FALSE,FALSE,0);
     GtkWidget *grid=gtk_grid_new();gtk_grid_set_column_spacing(GTK_GRID(grid),24);gtk_grid_set_row_spacing(GTK_GRID(grid),10);
     static const char *rows[][2]={
@@ -473,7 +473,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.8");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.9");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);
@@ -508,7 +508,7 @@ int main(int argc,char **argv){
     shield=gtk_toggle_button_new_with_label("Bloqueo");gtk_box_pack_start(GTK_BOX(toolbar),shield,FALSE,FALSE,0);g_signal_connect(shield,"toggled",G_CALLBACK(toggle_block),NULL);
     dark_button=gtk_toggle_button_new_with_label("Oscuro");gtk_widget_set_tooltip_text(dark_button,"Activar o desactivar el modo oscuro para este sitio. Se recarga la pestaña.");gtk_box_pack_start(GTK_BOX(toolbar),dark_button,FALSE,FALSE,0);g_signal_connect(dark_button,"toggled",G_CALLBACK(toggle_dark),NULL);
     GtkWidget *dl=gtk_menu_button_new();gtk_button_set_label(GTK_BUTTON(dl),"Descargas");gtk_box_pack_start(GTK_BOX(toolbar),dl,FALSE,FALSE,0);downloads_pop=gtk_popover_new(dl);downloads_box=gtk_box_new(GTK_ORIENTATION_VERTICAL,6);gtk_container_set_border_width(GTK_CONTAINER(downloads_box),10);gtk_container_add(GTK_CONTAINER(downloads_pop),downloads_box);list_status=gtk_label_new(no_update?"Listas incluidas · actualización desactivada en esta prueba":"Listas incluidas · actualización automática cada 6 h");gtk_label_set_line_wrap(GTK_LABEL(list_status),TRUE);gtk_box_pack_start(GTK_BOX(downloads_box),list_status,FALSE,FALSE,0);GtkWidget *u=gtk_button_new_with_label("Actualizar listas");gtk_box_pack_start(GTK_BOX(downloads_box),u,FALSE,FALSE,0);g_signal_connect(u,"clicked",G_CALLBACK(manual_update),NULL);gtk_widget_show_all(downloads_box);gtk_menu_button_set_popover(GTK_MENU_BUTTON(dl),downloads_pop);
-    button("+",G_CALLBACK(add_tab),NULL);notebook=gtk_notebook_new();gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook),TRUE);GtkWidget *brand=gtk_button_new_with_label("Babinium");gtk_widget_set_name(brand,"bb-brand");gtk_widget_set_tooltip_text(brand,"Abrir ayuda de Babinium");g_signal_connect(brand,"clicked",G_CALLBACK(open_help),NULL);gtk_widget_show(brand);gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook),brand,GTK_PACK_END);gtk_box_pack_start(GTK_BOX(root),notebook,TRUE,TRUE,0);
+    button("+",G_CALLBACK(add_tab),NULL);notebook=gtk_notebook_new();gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook),TRUE);GtkWidget *brand=gtk_button_new_with_label("Babinium ⚙");gtk_widget_set_name(brand,"bb-brand");gtk_widget_set_tooltip_text(brand,"Abrir ayuda y opciones de Babinium");g_signal_connect(brand,"clicked",G_CALLBACK(open_help),NULL);gtk_widget_show(brand);gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook),brand,GTK_PACK_END);gtk_box_pack_start(GTK_BOX(root),notebook,TRUE,TRUE,0);
     g_signal_connect_after(notebook,"switch-page",G_CALLBACK(switch_page),NULL);g_signal_connect(window,"destroy",G_CALLBACK(gtk_main_quit),NULL);g_signal_connect(window,"key-press-event",G_CALLBACK(key_press),NULL);g_signal_connect(window,"map-event",G_CALLBACK(mapped),NULL);g_signal_connect(window,"draw",G_CALLBACK(drawn),NULL);
     if(argc<2)new_tab("about:blank",TRUE);else for(int i=1;i<argc;i++)new_tab(argv[i],TRUE);
     gtk_widget_show_all(window);refresh_controls();
