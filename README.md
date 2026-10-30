@@ -24,6 +24,9 @@ pedidos y los puntos que todavía requieren pruebas.
   «Babinium» se abre una pestaña de ayuda GTK.
 - En videos de YouTube, «Abrir MPV» abre el video en un reproductor separado;
   requiere MPV y yt-dlp y sigue funcionando si se cierra el navegador.
+- Para reducir CPU, las animaciones CSS infinitas muy alejadas de la pantalla
+  se pausan y vuelven a moverse antes de entrar en la vista. La opción se puede
+  desactivar desde la ayuda al pulsar «Babinium»; recargá luego la página.
 - Modo oscuro predeterminado con la API local de Dark Reader; el botón Oscuro
   permite excluir un sitio. YouTube usa su propio tema oscuro cuando está
   disponible. Cuando el fondo y varios puntos visibles ya son oscuros se evita
@@ -109,6 +112,12 @@ de ocho conjuntos pequeños de excepciones por URL para evitar volver a calcular
 los recursos completos al aparecer clases nuevas; se limpia al cambiar el motor.
 La política de caché reduce retención a
 cambio de volver a cargar páginas al retroceder; no se desactivan JIT ni sandbox.
+La optimización de animaciones usa `IntersectionObserver`, sin sondeo continuo,
+y deja intactas las animaciones finitas y los elementos que las combinan con
+otras infinitas. Tiene un límite de 256 elementos observados por documento.
+Pausar animaciones lejanas puede afectar páginas que dependan de sus eventos;
+si ocurre, desactivá la opción en la ayuda y recargá. El cambio afecta a páginas
+posteriores o recargadas y no modifica la preferencia de JavaScript.
 
 `WebPage::send-request` permite cancelar y cambiar URLs, pero la API pública no
 expone el tipo exacto de recurso ni su frame iniciador. Se usa Sec-Fetch-Dest si

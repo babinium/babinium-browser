@@ -1,0 +1,147 @@
+#!/usr/bin/python3
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""Exercise the real YouTube button on the visible desktop with an isolated profile.
+
+The first run records the launch arguments; the second runs the installed MPV,
+muted and limited to 720p only for this test, and checks playback after closing
+the browser. The real user's profile and existing MPV processes are untouched.
+"""
+import json
+import os
+from pathlib import Path
+import signal
+import socket
+import subprocess
+import sys
+import tempfile
+import time
+
+from features import events, wait_for
+
+
+binary = Path(sys.argv[1]).resolve()
+output = Path(sys.argv[2]).resolve()
+output.mkdir(parents=True, exist_ok=True)
+source = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&utm_source=babinium-test'
+canonical = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+
+
+def window_for(process):
+    end = time.monotonic() + 12
+    while time.monotonic() < end and process.poll() is None:
+        result = subprocess.run(['xdotool', 'search', '--onlyvisible', '--pid', str(process.pid)],
+                                capture_output=True, text=True, timeout=5)
+        if result.returncode == 0 and result.stdout.splitlines():
+            return result.stdout.splitlines()[0]
+        time.sleep(.1)
+    raise AssertionError('No apareció la ventana de Babinium')
+
+
+def property_value(path, name):
+    with socket.socket(socket.AF_UNIX) as conn:
+        conn.settimeout(3)
+        conn.connect(str(path))
+        conn.sendall((json.dumps({'command': ['get_property', name], 'request_id': 1}) + '\n').encode())
+        with conn.makefile('r') as reader:
+            for line in reader:
+                message = json.loads(line)
+                if message.get('request_id') == 1:
+                    return message.get('data')
+    return None
+
+
+def wait_browser(predicate, browser, timeout):
+    def ready():
+        if browser.poll() is not None:
+            raise AssertionError(f'Babinium terminó antes de tiempo: {browser.returncode}')
+        return predicate()
+    wait_for(ready, timeout)
+
+
+for mode in os.environ.get('BB_MPV_TEST_MODES', 'fake,real').split(','):
+    with tempfile.TemporaryDirectory(prefix='bb-mpv-button-') as temp_name:
+        temp = Path(temp_name)
+        bindir = temp / 'bin'
+        bindir.mkdir()
+        record = temp / 'launch.json'
+        ipc = temp / 'mpv.sock'
+        wrapper = bindir / 'mpv'
+        code = [
+            '#!/usr/bin/python3',
+            'import json,os,sys,time',
+            f'open({str(record)!r},"w").write(json.dumps({{"pid":os.getpid(),"sid":os.getsid(0),"argv":sys.argv[1:]}}))',
+        ]
+        if mode == 'fake':
+            code.append('time.sleep(120)')
+        else:
+            code.append(f'os.execv("/usr/bin/mpv",["/usr/bin/mpv","--no-config","--mute=yes",'
+                        f'"--ytdl-format=bestvideo[height<=720]+bestaudio/best[height<=720]/best",'
+                        f'{("--input-ipc-server=" + str(ipc))!r}]+sys.argv[1:])')
+        wrapper.write_text('\n'.join(code) + '\n')
+        wrapper.chmod(0o755)
+        env = dict(os.environ)
+        env['PATH'] = str(bindir) + os.pathsep + env['PATH']
+        telemetry = output / (mode + '-events.jsonl')
+        screen = output / (mode + '-youtube.png')
+        pid = None
+        with (output / (mode + '-stderr.log')).open('w') as stderr:
+            browser = subprocess.Popen([str(binary), '--profile', str(temp / 'profile'), '--no-update',
+                                        '--telemetry', str(telemetry), '--screenshot', str(screen),
+                                        '--snapshot-after', '8', '--quit-after', '120', source],
+                                       env=env, stdout=subprocess.DEVNULL, stderr=stderr)
+            try:
+                wait_browser(lambda: any(e['event'] == 'load_committed' for e in events(telemetry)), browser, 30)
+                wid = window_for(browser)
+                wait_browser(screen.exists, browser, 25)
+                subprocess.run(['xdotool', 'windowfocus', '--sync', wid], check=True, timeout=5)
+                for key in ('ctrl+l', 'Tab', 'Return'):
+                    subprocess.run(['xdotool', 'key', '--clearmodifiers', '--window', wid, key], check=True, timeout=5)
+                    time.sleep(.15)
+                wait_browser(record.exists, browser, 12)
+                launch = json.loads(record.read_text())
+                pid = launch['pid']
+                assert launch['sid'] == pid, launch
+                assert launch['argv'] == ['--force-window=immediate', '--no-terminal', '--', canonical], launch
+                if mode == 'real':
+                    wait_for(ipc.exists, 15)
+                    end = time.monotonic() + 90
+                    before = None
+                    while time.monotonic() < end:
+                        try:
+                            before = property_value(ipc, 'time-pos')
+                            if isinstance(before, (float, int)) and before > 2:
+                                break
+                        except (OSError, ValueError):
+                            pass
+                        time.sleep(1)
+                    assert isinstance(before, (float, int)) and before > 2, before
+                    video = property_value(ipc, 'video-params')
+                    assert video and video.get('w') and video.get('h'), video
+                subprocess.run(['xdotool', 'windowfocus', '--sync', wid], check=True, timeout=5)
+                # The window can disappear between key-down and key-up. Send
+                # releases globally so Ctrl+W cannot remain stuck on the desktop.
+                try:
+                    subprocess.run(['xdotool', 'keydown', 'Control_L'], check=True, timeout=5)
+                    subprocess.run(['xdotool', 'key', 'w'], check=True, timeout=5)
+                finally:
+                    subprocess.run(['xdotool', 'keyup', 'w', 'Control_L'], check=True, timeout=5)
+                browser.wait(timeout=12)
+                assert browser.returncode == 0, browser.returncode
+                os.kill(pid, 0)
+                if mode == 'real':
+                    time.sleep(3)
+                    after = property_value(ipc, 'time-pos')
+                    assert isinstance(after, (float, int)) and after > before, (before, after)
+                    print('MPV real siguió reproduciendo tras cerrar Babinium:',
+                          json.dumps({'antes': before, 'despues': after, 'video': video}), flush=True)
+                else:
+                    print('Botón de YouTube, URL limpia y proceso independiente: correcto', flush=True)
+            finally:
+                if browser.poll() is None:
+                    browser.terminate()
+                    browser.wait(timeout=10)
+                if pid:
+                    try:
+                        os.killpg(pid, signal.SIGTERM)
+                    except ProcessLookupError:
+                        pass
