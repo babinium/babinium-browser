@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include "site-name.h"
 #include "youtube-url.h"
+#include "mpv-options.h"
 
 typedef struct Tab { GtkWidget *view,*label,*box,*placeholder,*help; char *youtube_url; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
 static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*dark_button,*favorite_button,*favorites_box,*favorites_pop,*favorites_scroll,*downloads_box,*downloads_pop,*list_status,*mpv_button;
@@ -191,7 +192,8 @@ static void mpv_finished(GObject *object,GAsyncResult *result,gpointer data){
 }
 static void open_mpv(GtkButton *button,gpointer unused){
     (void)button;(void)unused;Tab *t=current();if(!t||!t->youtube_url)return;
-    const char *argv[]={"mpv","--force-window=immediate","--no-terminal","--",t->youtube_url,NULL};
+    const char *argv[]={"mpv","--force-window=immediate","--no-terminal",BB_MPV_YTDL_ARGUMENT,
+                        BB_MPV_AUDIO_LANGUAGE,BB_MPV_NO_SUBTITLES,BB_MPV_YTDL_NO_SUBTITLES,"--",t->youtube_url,NULL};
     GSubprocessLauncher *launcher=g_subprocess_launcher_new(G_SUBPROCESS_FLAGS_STDOUT_SILENCE|G_SUBPROCESS_FLAGS_STDERR_SILENCE);
     g_subprocess_launcher_set_child_setup(launcher,mpv_child_setup,NULL,NULL);
     GError *error=NULL;GSubprocess *p=g_subprocess_launcher_spawnv(launcher,argv,&error);g_object_unref(launcher);
@@ -248,7 +250,7 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_box_pack_start(GTK_BOX(body),grid,FALSE,FALSE,0);
     GtkWidget *note=gtk_label_new("Los atajos controlan el video o audio activo y no se aplican mientras escribís.\nSi el reproductor está incrustado, hacé clic en él para darle el foco.\nAlgunos reproductores o contenidos pueden limitar la velocidad.");
     gtk_label_set_line_wrap(GTK_LABEL(note),TRUE);gtk_label_set_xalign(GTK_LABEL(note),0);gtk_box_pack_start(GTK_BOX(body),note,FALSE,FALSE,0);
-    GtkWidget *mpv_note=gtk_label_new("En un video de YouTube, «Abrir MPV» lo abre en una ventana independiente.\nSe necesitan MPV y yt-dlp actualizado; en Debian 13 está disponible en trixie-backports.");
+    GtkWidget *mpv_note=gtk_label_new("En un video de YouTube, «Abrir MPV» lo abre en una ventana independiente.\nPrefiere 1080p o 720p y audio en español si está disponible; sin subtítulos.\nSe necesitan MPV y yt-dlp actualizado; en Debian 13 está disponible en trixie-backports.");
     gtk_label_set_line_wrap(GTK_LABEL(mpv_note),TRUE);gtk_label_set_xalign(GTK_LABEL(mpv_note),0);gtk_box_pack_start(GTK_BOX(body),mpv_note,FALSE,FALSE,0);
     GtkWidget *animation_toggle=gtk_check_button_new_with_label("Pausar animaciones lejanas para reducir el uso de CPU");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(animation_toggle),suspend_animations);

@@ -23,7 +23,9 @@ pedidos y los puntos que todavía requieren pruebas.
   [Video Speed Controller](https://github.com/igrigorik/videospeed). Al pulsar
   «Babinium» se abre una pestaña de ayuda GTK.
 - En videos de YouTube, «Abrir MPV» abre el video en un reproductor separado;
-  requiere MPV y yt-dlp y sigue funcionando si se cierra el navegador.
+  requiere MPV y yt-dlp y sigue funcionando si se cierra el navegador. Prefiere
+  1080p, o 720p si no hay 1080p, y H.264 cuando está disponible. Prioriza audio
+  en español si se ofrece y no carga subtítulos.
 - Para reducir CPU, las animaciones CSS infinitas muy alejadas de la pantalla
   se pausan y vuelven a moverse antes de entrar en la vista. La opción se puede
   desactivar desde la ayuda al pulsar «Babinium»; recargá luego la página.
@@ -63,6 +65,9 @@ el extractor con `sudo apt update` y `sudo apt install yt-dlp/trixie-backports`.
 YouTube cambia con el tiempo, por lo que ninguna versión garantiza reproducir
 todos los videos; MPV no recibe automáticamente la sesión de Babinium. Algunos
 videos pueden requerir además la [configuración de JavaScript de yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/EJS).
+Si no existe ninguna de las dos calidades, se elige la mejor disponible por
+debajo de 720p; si no existe un formato compatible de hasta 1080p, MPV informará
+un error. El español se aplica solo a las pistas disponibles en el video.
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
 perfiles de prueba independientes. No abrir simultáneamente dos instancias sobre

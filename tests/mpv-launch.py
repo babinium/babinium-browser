@@ -18,6 +18,7 @@ import tempfile
 import time
 
 from features import events, wait_for
+from mpv_format import selector
 from ui import browser_window, key
 
 
@@ -92,7 +93,10 @@ for mode in os.environ.get('BB_MPV_TEST_MODES', 'fake,real').split(','):
                 launch = json.loads(record.read_text())
                 pid = launch['pid']
                 assert launch['sid'] == pid, launch
-                assert launch['argv'] == ['--force-window=immediate', '--no-terminal', '--', canonical], launch
+                assert launch['argv'] == ['--force-window=immediate', '--no-terminal',
+                    '--ytdl-format=' + selector(), '--alang=es,es-419,es-ES',
+                    '--sid=no', '--ytdl-raw-options=sub-langs=^$',
+                    '--', canonical], launch
                 if mode == 'real':
                     wait_for(ipc.exists, 15)
                     # YouTube extraction and CDN startup can be slow on an
@@ -110,6 +114,22 @@ for mode in os.environ.get('BB_MPV_TEST_MODES', 'fake,real').split(','):
                     assert isinstance(before, (float, int)) and before > 2, before
                     video = property_value(ipc, 'video-params')
                     assert video and video.get('w') and video.get('h'), video
+                    assert video['h'] <= 1080, video
+                    expected_height = os.environ.get('BB_MPV_EXPECT_HEIGHT')
+                    if expected_height:
+                        assert video['h'] == int(expected_height), video
+                    tracks = property_value(ipc, 'track-list') or []
+                    selected = [{'type': track.get('type'), 'lang': track.get('lang')}
+                                for track in tracks if track.get('selected')]
+                    assert not any(track.get('type') == 'sub' for track in tracks), tracks
+                    if os.environ.get('BB_MPV_EXPECT_SPANISH_AUDIO'):
+                        # The container can label a dubbed stream "eng" even
+                        # when yt-dlp selected its Spanish-language format.
+                        result = property_value(ipc, 'user-data/mpv/ytdl/json-subprocess-result')
+                        info = json.loads(result['stdout'])
+                        requested = info.get('requested_formats', [])
+                        assert any(str(item.get('language', '')).startswith('es') and
+                                   item.get('acodec') not in (None, 'none') for item in requested), requested
                 subprocess.run(['xdotool', 'windowfocus', '--sync', wid], check=True, timeout=5)
                 # The window can disappear between key-down and key-up. Send
                 # releases globally so Ctrl+W cannot remain stuck on the desktop.
@@ -126,7 +146,8 @@ for mode in os.environ.get('BB_MPV_TEST_MODES', 'fake,real').split(','):
                     after = property_value(ipc, 'time-pos')
                     assert isinstance(after, (float, int)) and after > before, (before, after)
                     print('MPV real siguió reproduciendo tras cerrar Babinium:',
-                          json.dumps({'antes': before, 'despues': after, 'video': video}), flush=True)
+                          json.dumps({'antes': before, 'despues': after, 'video': video,
+                                      'pistas': selected}), flush=True)
                 else:
                     print('Botón de YouTube, URL limpia y proceso independiente: correcto', flush=True)
             finally:

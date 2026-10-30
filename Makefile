@@ -15,7 +15,7 @@ build/bin/babinium-filter: $(RUSTLIB)
 	mkdir -p $(@D)
 	cp blocker/target/release/babinium-filter $@
 
-build/bin/babinium-browser: src/browser.c src/site-name.c src/site-name.h src/youtube-url.c src/youtube-url.h
+build/bin/babinium-browser: src/browser.c src/site-name.c src/site-name.h src/youtube-url.c src/youtube-url.h src/mpv-options.h
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) src/browser.c src/site-name.c src/youtube-url.c -o $@ $$(pkg-config --cflags --libs $(UI_PKGS)) -Wl,--gc-sections
 
