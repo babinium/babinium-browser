@@ -3,4 +3,4 @@
 #include <gtk/gtk.h>
 
 /* Open or replace a YouTube video in Babinium's independent MPV process. */
-void mpv_controller_play(GtkWindow *parent,const char *url);
+void mpv_controller_play(GtkWindow *parent,const char *url,guint resolution);
