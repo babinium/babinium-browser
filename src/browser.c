@@ -6,9 +6,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "site-name.h"
 
 typedef struct Tab { GtkWidget *view,*label,*box,*placeholder,*help; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
-static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*dark_button,*favorite_button,*favorites_box,*favorites_pop,*downloads_box,*downloads_pop,*list_status;
+static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*dark_button,*favorite_button,*favorites_box,*favorites_pop,*favorites_scroll,*downloads_box,*downloads_pop,*list_status;
 static WebKitWebContext *context;
 static WebKitUserContentManager *content;
 static GHashTable *disabled,*light_sites;
@@ -239,17 +240,36 @@ static void favorites_rebuild(void){
     for(gsize i=0;i<n;i++){
         char *uri=g_key_file_get_string(favorites,groups[i],"uri",NULL),*title=g_key_file_get_string(favorites,groups[i],"title",NULL);
         if(!bookmarkable(uri)){g_free(uri);g_free(title);continue;}
-        GtkWidget *row=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,3),*open=gtk_button_new_with_label(title&&*title?title:uri),*remove=gtk_button_new_with_label("×");
-        GtkWidget *label=gtk_bin_get_child(GTK_BIN(open));gtk_label_set_ellipsize(GTK_LABEL(label),PANGO_ELLIPSIZE_END);gtk_label_set_max_width_chars(GTK_LABEL(label),45);
-        gtk_widget_set_tooltip_text(open,uri);gtk_widget_set_tooltip_text(remove,"Quitar de favoritos");
+        char *site=favorite_site_name(uri),*clean=g_strdup(title?title:"");g_strstrip(clean);
+        gboolean title_is_url=!g_ascii_strncasecmp(clean,"http://",7)||!g_ascii_strncasecmp(clean,"https://",8);
+        const char *shown=*clean&&!title_is_url?clean:site;
+        GtkWidget *row=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,3),*open=gtk_button_new(),*remove=gtk_button_new_with_label("×");
+        GtkWidget *content=gtk_box_new(GTK_ORIENTATION_VERTICAL,2),*label=gtk_label_new(shown);
+        gtk_label_set_xalign(GTK_LABEL(label),0);gtk_label_set_line_wrap(GTK_LABEL(label),TRUE);
+        gtk_label_set_line_wrap_mode(GTK_LABEL(label),PANGO_WRAP_WORD_CHAR);gtk_label_set_width_chars(GTK_LABEL(label),1);gtk_label_set_max_width_chars(GTK_LABEL(label),70);
+        gtk_widget_set_hexpand(label,TRUE);gtk_box_pack_start(GTK_BOX(content),label,FALSE,FALSE,0);
+        if(g_ascii_strcasecmp(shown,site)){
+            GtkWidget *site_label=gtk_label_new(site);gtk_label_set_xalign(GTK_LABEL(site_label),0);
+            gtk_style_context_add_class(gtk_widget_get_style_context(site_label),"dim-label");
+            gtk_box_pack_start(GTK_BOX(content),site_label,FALSE,FALSE,0);
+        }
+        gtk_container_add(GTK_CONTAINER(open),content);
+        gtk_widget_set_tooltip_text(open,shown);gtk_widget_set_tooltip_text(remove,"Quitar de favoritos");
         g_object_set_data_full(G_OBJECT(open),"uri",g_strdup(uri),g_free);g_object_set_data_full(G_OBJECT(remove),"id",g_strdup(groups[i]),g_free);
         g_signal_connect(open,"clicked",G_CALLBACK(favorite_open),NULL);g_signal_connect(remove,"clicked",G_CALLBACK(favorite_remove),NULL);
         gtk_box_pack_start(GTK_BOX(row),open,TRUE,TRUE,0);gtk_box_pack_start(GTK_BOX(row),remove,FALSE,FALSE,0);gtk_box_pack_start(GTK_BOX(favorites_box),row,FALSE,FALSE,0);
-        g_free(uri);g_free(title);
+        g_free(site);g_free(clean);g_free(uri);g_free(title);
     }
     g_strfreev(groups);gtk_widget_show_all(favorites_box);
 }
-static void favorites_show(GtkWidget *w,gpointer unused){(void)w;(void)unused;favorites_rebuild();}
+static void favorites_show(GtkWidget *w,gpointer unused){
+    (void)w;(void)unused;
+    int width=MAX(80,MIN(620,gtk_widget_get_allocated_width(window)-32));
+    int height=MAX(100,MIN(480,gtk_widget_get_allocated_height(window)-120));
+    gtk_widget_set_size_request(favorites_scroll,width,-1);
+    gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(favorites_scroll),height);
+    favorites_rebuild();
+}
 typedef struct {WebKitDownload *download;GtkWidget *progress,*cancel;} Download;
 static void cancel_download(GtkButton *b,Download *d){(void)b;webkit_download_cancel(d->download);}
 static void download_progress(GObject *o,GParamSpec *ps,Download *d){(void)ps;gtk_progress_bar_set_fraction(GTK_PROGRESS_BAR(d->progress),webkit_download_get_estimated_progress(WEBKIT_DOWNLOAD(o)));}
@@ -360,7 +380,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.4");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.5");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);
@@ -381,8 +401,8 @@ int main(int argc,char **argv){
     address=gtk_entry_new();gtk_entry_set_placeholder_text(GTK_ENTRY(address),"Dirección o búsqueda");gtk_box_pack_start(GTK_BOX(toolbar),address,TRUE,TRUE,0);g_signal_connect(address,"activate",G_CALLBACK(entry_activate),NULL);
     favorite_button=button("☆",G_CALLBACK(toggle_favorite),NULL);
     GtkWidget *fm=gtk_menu_button_new();gtk_button_set_label(GTK_BUTTON(fm),"Favoritos");gtk_box_pack_start(GTK_BOX(toolbar),fm,FALSE,FALSE,0);favorites_pop=gtk_popover_new(fm);
-    GtkWidget *scroll=gtk_scrolled_window_new(NULL,NULL);gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),GTK_POLICY_NEVER,GTK_POLICY_AUTOMATIC);gtk_scrolled_window_set_min_content_width(GTK_SCROLLED_WINDOW(scroll),260);gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(scroll),320);gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(scroll),TRUE);
-    favorites_box=gtk_box_new(GTK_ORIENTATION_VERTICAL,3);gtk_container_set_border_width(GTK_CONTAINER(favorites_box),8);gtk_container_add(GTK_CONTAINER(scroll),favorites_box);gtk_container_add(GTK_CONTAINER(favorites_pop),scroll);gtk_widget_show_all(scroll);gtk_menu_button_set_popover(GTK_MENU_BUTTON(fm),favorites_pop);g_signal_connect(favorites_pop,"show",G_CALLBACK(favorites_show),NULL);
+    favorites_scroll=gtk_scrolled_window_new(NULL,NULL);gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(favorites_scroll),GTK_POLICY_NEVER,GTK_POLICY_AUTOMATIC);gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(favorites_scroll),480);gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(favorites_scroll),TRUE);
+    favorites_box=gtk_box_new(GTK_ORIENTATION_VERTICAL,3);gtk_container_set_border_width(GTK_CONTAINER(favorites_box),8);gtk_container_add(GTK_CONTAINER(favorites_scroll),favorites_box);gtk_container_add(GTK_CONTAINER(favorites_pop),favorites_scroll);gtk_widget_show_all(favorites_scroll);gtk_menu_button_set_popover(GTK_MENU_BUTTON(fm),favorites_pop);g_signal_connect(favorites_pop,"show",G_CALLBACK(favorites_show),NULL);
     shield=gtk_toggle_button_new_with_label("Bloqueo");gtk_box_pack_start(GTK_BOX(toolbar),shield,FALSE,FALSE,0);g_signal_connect(shield,"toggled",G_CALLBACK(toggle_block),NULL);
     dark_button=gtk_toggle_button_new_with_label("Oscuro");gtk_widget_set_tooltip_text(dark_button,"Activar o desactivar el modo oscuro para este sitio. Se recarga la pestaña.");gtk_box_pack_start(GTK_BOX(toolbar),dark_button,FALSE,FALSE,0);g_signal_connect(dark_button,"toggled",G_CALLBACK(toggle_dark),NULL);
     GtkWidget *dl=gtk_menu_button_new();gtk_button_set_label(GTK_BUTTON(dl),"Descargas");gtk_box_pack_start(GTK_BOX(toolbar),dl,FALSE,FALSE,0);downloads_pop=gtk_popover_new(dl);downloads_box=gtk_box_new(GTK_ORIENTATION_VERTICAL,6);gtk_container_set_border_width(GTK_CONTAINER(downloads_box),10);gtk_container_add(GTK_CONTAINER(downloads_pop),downloads_box);list_status=gtk_label_new(no_update?"Listas incluidas · actualización desactivada en esta prueba":"Listas incluidas · actualización automática cada 6 h");gtk_label_set_line_wrap(GTK_LABEL(list_status),TRUE);gtk_box_pack_start(GTK_BOX(downloads_box),list_status,FALSE,FALSE,0);GtkWidget *u=gtk_button_new_with_label("Actualizar listas");gtk_box_pack_start(GTK_BOX(downloads_box),u,FALSE,FALSE,0);g_signal_connect(u,"clicked",G_CALLBACK(manual_update),NULL);gtk_widget_show_all(downloads_box);gtk_menu_button_set_popover(GTK_MENU_BUTTON(dl),downloads_pop);

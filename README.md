@@ -17,8 +17,8 @@ pedidos y los puntos que todavía requieren pruebas.
 
 - Barra de direcciones con búsqueda Google, atrás/adelante, pestañas y descargas.
 - Pestañas vacías negras y «Babinium» en el extremo derecho de la barra.
-- Favoritos en el perfil, con estrella y panel; cookies y datos de sitios
-  persistentes entre reinicios.
+- Favoritos en el perfil, con estrella y panel amplio de títulos y nombres de
+  sitio; cookies y datos de sitios persistentes entre reinicios.
 - Control integrado de velocidad para medios HTML5, con indicador y los atajos de
   [Video Speed Controller](https://github.com/igrigorik/videospeed). Al pulsar
   «Babinium» se abre una pestaña de ayuda GTK.
@@ -45,7 +45,7 @@ sin instalar. Para el bundle se necesitan las dependencias de ejecución del paq
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.4.4_amd64.deb
+sudo apt install ./babinium-browser_0.4.5_amd64.deb
 ```
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
