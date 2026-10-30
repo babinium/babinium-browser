@@ -60,7 +60,7 @@ sin instalar. Para el bundle se necesitan las dependencias de ejecución del paq
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.4.10_amd64.deb
+sudo apt install ./babinium-browser_0.4.11_amd64.deb
 ```
 
 «Abrir MPV» necesita una versión reciente de `yt-dlp`: la versión de abril de
@@ -77,7 +77,10 @@ La selección se aplica al abrir o volver a abrir un video. Si la calidad elegid
 no existe, se busca una inferior; si no hay un formato compatible a esa altura o
 menor, MPV informará un error. El español se aplica solo a las pistas disponibles
 en el video. La opción de subtítulos también se aplica al abrir o volver a abrir
-un video; las pistas generadas automáticamente pueden contener errores.
+un video; las pistas generadas automáticamente pueden contener errores. Para
+videos que no son transmisiones en vivo se intenta limpiar repeticiones y
+solapamientos de subtítulos automáticos SRT; si no se puede, se usa la pista
+original. Esta corrección está pendiente de prueba manual.
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
 perfiles de prueba independientes. No abrir simultáneamente dos instancias sobre
@@ -104,7 +107,8 @@ En videos de YouTube incrustados en otros sitios, Babinium prioriza la velocidad
 pedida; su indicador muestra la velocidad real, aunque el menú propio de YouTube
 no coincida por encima de 2×. En la ventana de MPV se usan sus propios controles:
 espacio o p pausa; las flechas izquierda y derecha retroceden o avanzan; [ y ]
-cambian la velocidad; Retroceso vuelve a 1×; 9 y 0 cambian el volumen; m silencia;
+cambian la velocidad en pasos finos, { y } la dividen o multiplican por dos;
+Retroceso vuelve a 1×; 9 y 0 cambian el volumen; m silencia;
 f y Esc controlan la pantalla completa; v muestra u oculta subtítulos y q cierra
 MPV. Estos atajos pueden variar si se personalizó la configuración de MPV.
 Después de cambiar la velocidad, el navegador escucha cambios del medio y

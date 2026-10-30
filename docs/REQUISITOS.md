@@ -53,6 +53,9 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
   no hay español. Pendiente de prueba por Miguel.
 - [ ] Aclarar los controles para videos fuera de YouTube y mostrar en la ayuda
   los controles básicos de MPV para YouTube. Pendiente de prueba por Miguel.
+- [ ] Mostrar en la ayuda las teclas de MPV para velocidad fina ([ y ]) y para
+  dividirla o duplicarla ({ y }). Limpiar repeticiones y solapamientos de los
+  subtítulos automáticos de YouTube; pendiente de prueba por Miguel.
 - [x] Investigar y reducir cuando sea posible el consumo de CPU en Infobae y
   YouTube, midiendo sin quitar por defecto las funciones solicitadas.
 - [x] Evaluar si un control de JavaScript por sitio merece incorporarse, tras
