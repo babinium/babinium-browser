@@ -20,7 +20,7 @@ static GPtrArray *tabs;
 static char *profile,*data_dir,*ext_dir,*bin_dir,*index_path,*sites_path,*light_path,*favorites_path,*filters_dir;
 static char *opt_profile,*opt_data,*opt_telemetry,*opt_eval,*opt_screenshot;
 static int quit_after,eval_after=10,snapshot_after=15,probe_interval;
-static gboolean no_block,no_update,autoplay,audit,updating,setting_shield,setting_dark,favorites_readonly;
+static gboolean no_block,no_update,autoplay,audit,updating,setting_shield,setting_dark,favorites_readonly,diagnostic_no_javascript;
 static gint64 start_time;
 static FILE *telemetry;
 static guint mapped_once,frame_once;
@@ -138,6 +138,7 @@ static void attach_view(Tab *t,WebKitWebView *related){
     t->view=related?webkit_web_view_new_with_related_view(related):GTK_WIDGET(g_object_new(WEBKIT_TYPE_WEB_VIEW,"web-context",context,"user-content-manager",content,NULL));
     GdkRGBA black={0,0,0,1};webkit_web_view_set_background_color(WEBKIT_WEB_VIEW(t->view),&black);
     WebKitSettings *s=webkit_web_view_get_settings(WEBKIT_WEB_VIEW(t->view));
+    webkit_settings_set_enable_javascript(s,!diagnostic_no_javascript);
     webkit_settings_set_enable_developer_extras(s,audit);
     webkit_settings_set_media_playback_requires_user_gesture(s,!autoplay);
     if(autoplay)webkit_web_view_set_is_muted(WEBKIT_WEB_VIEW(t->view),TRUE);
@@ -406,6 +407,7 @@ int main(int argc,char **argv){
         {"telemetry",0,0,G_OPTION_ARG_FILENAME,&opt_telemetry,"Diagnóstico JSONL explícito (incluye URLs)","FILE"},
         {"audit",0,0,G_OPTION_ARG_NONE,&audit,"Registrar solicitudes bloqueadas y habilitar inspector",NULL},
         {"autoplay",0,0,G_OPTION_ARG_NONE,&autoplay,"Permitir reproducción sin gesto para pruebas",NULL},
+        {"diagnostic-no-javascript",0,0,G_OPTION_ARG_NONE,&diagnostic_no_javascript,"Desactivar JavaScript para medición de desarrollo",NULL},
         {"quit-after",0,0,G_OPTION_ARG_INT,&quit_after,"Cerrar después de N segundos","N"},
         {"eval",0,0,G_OPTION_ARG_FILENAME,&opt_eval,"Ejecutar JavaScript de un archivo local para pruebas","FILE"},
         {"eval-after",0,0,G_OPTION_ARG_INT,&eval_after,"Demora del JavaScript de prueba","N"},
