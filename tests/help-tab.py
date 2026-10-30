@@ -9,6 +9,7 @@ import sys
 import tempfile
 import threading
 import time
+from ui import browser_window,key
 
 binary=Path(sys.argv[1]).resolve();out=Path(sys.argv[2]).resolve();out.mkdir(parents=True,exist_ok=True)
 class Handler(http.server.BaseHTTPRequestHandler):
@@ -24,7 +25,7 @@ try:
             p=subprocess.Popen([str(binary),'--profile',temp,'--no-update','--telemetry',str(log),'--screenshot',str(png),
                 '--snapshot-after','3','--quit-after','30'],stdout=subprocess.DEVNULL,stderr=err)
             try:
-                wid=subprocess.check_output(['xdotool','search','--sync','--onlyvisible','--pid',str(p.pid)],text=True,timeout=10).splitlines()[0]
+                wid=browser_window(p.pid)
                 def title():return subprocess.check_output(['xdotool','getwindowname',wid],text=True,timeout=5)
                 def wait(fn,seconds=15):
                     end=time.monotonic()+seconds
@@ -33,7 +34,6 @@ try:
                         time.sleep(.1)
                     raise AssertionError('Timed out; title='+title())
                 def events():return [json.loads(line) for line in log.read_text().splitlines()] if log.exists() else []
-                def key(k):subprocess.run(['xdotool','key','--clearmodifiers','--window',wid,k],check=True,timeout=5)
                 geometry=subprocess.check_output(['xdotool','getwindowgeometry','--shell',wid],text=True)
                 width=int(dict(line.split('=',1) for line in geometry.splitlines() if '=' in line)['WIDTH'])
                 subprocess.run(['xdotool','windowfocus','--sync',wid],check=True)

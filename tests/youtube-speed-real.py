@@ -9,14 +9,18 @@ import signal
 import subprocess
 import sys
 import time
+from ui import browser_window,key
 
 binary=Path(sys.argv[1]).resolve();out=Path(sys.argv[2]).resolve();out.mkdir(parents=True,exist_ok=True)
 driver=Path(__file__).with_name('youtube-speed.js').resolve()
+eval_delay=os.environ.get('BABINIUM_TEST_YOUTUBE_EVAL_AFTER','30')
+initial_timeout=int(os.environ.get('BABINIUM_TEST_YOUTUBE_INITIAL_WAIT','65'))
+quit_after=os.environ.get('BABINIUM_TEST_YOUTUBE_QUIT_AFTER','100')
 with (out/'stderr.log').open('w') as err:
     p=subprocess.Popen([str(binary),'--profile',str(out/'profile'),'--no-update','--autoplay','--eval',str(driver),
-        '--eval-after','30','--quit-after','100','https://www.youtube.com/watch?v=dQw4w9WgXcQ&hl=en'],stdout=subprocess.DEVNULL,stderr=err,start_new_session=True)
+        '--eval-after',eval_delay,'--quit-after',quit_after,'https://www.youtube.com/watch?v=dQw4w9WgXcQ&hl=en'],stdout=subprocess.DEVNULL,stderr=err,start_new_session=True)
     try:
-        wid=subprocess.check_output(['xdotool','search','--sync','--onlyvisible','--pid',str(p.pid)],text=True,timeout=10).splitlines()[0]
+        wid=browser_window(p.pid)
         last_observation=[None]
         def state():
             title=subprocess.check_output(['xdotool','getwindowname',wid],text=True,timeout=5).strip()
@@ -31,8 +35,7 @@ with (out/'stderr.log').open('w') as err:
                 if value and predicate(value):return value
                 time.sleep(.2)
             raise AssertionError('Timed out: '+str(state())+'; last observation: '+str(last_observation[0]))
-        def key(k):subprocess.run(['xdotool','key','--clearmodifiers','--window',wid,k],check=True,timeout=5)
-        initial=wait(lambda s:s.get('height')==360 and s.get('time',0)>2 and not s.get('ad'),seconds=65)
+        initial=wait(lambda s:s.get('height')==360 and s.get('time',0)>2 and not s.get('ad'),seconds=initial_timeout)
         subprocess.run(['xdotool','windowfocus','--sync',wid],check=True)
         geom=subprocess.check_output(['xdotool','getwindowgeometry','--shell',wid],text=True)
         size=dict(line.split('=',1) for line in geom.splitlines() if '=' in line);r=initial['videoRect']

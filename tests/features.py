@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Exercise dark mode, profile persistence, favorites and Google in real GTK/WebKit.
 
-Run under Xvfb as an unprivileged user against the remotely built bundle.
+Run on a visible X11 desktop as an unprivileged user against the remotely built bundle.
 """
 import http.server
 import json
@@ -17,6 +17,7 @@ import time
 import gi
 gi.require_version('GdkPixbuf','2.0')
 from gi.repository import GdkPixbuf
+from ui import browser_window, key
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self,*args):pass
@@ -111,9 +112,8 @@ def run(binary,output):
                     p=subprocess.Popen([str(binary),'--profile',str(profile),'--no-update','--telemetry',str(log),'--quit-after','25',url+'/check'],stdout=subprocess.DEVNULL,stderr=stderr)
                     try:
                         wait_for(lambda:any(e['event']=='load_finished' for e in events(log)))
-                        wid=subprocess.check_output(['xdotool','search','--sync','--onlyvisible','--pid',str(p.pid)],text=True,timeout=8).splitlines()[0]
+                        wid=browser_window(p.pid)
                         subprocess.run(['xdotool','windowfocus','--sync',wid],check=True,timeout=5)
-                        def key(k):subprocess.run(['xdotool','key','--clearmodifiers','--window',wid,k],check=True,timeout=5)
                         key('ctrl+d');fav=profile/'favorites.ini'
                         if phase=='add':wait_for(lambda:fav.exists() and url+'/check' in fav.read_text())
                         else:wait_for(lambda:fav.exists() and url+'/check' not in fav.read_text())

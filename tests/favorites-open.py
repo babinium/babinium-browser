@@ -10,6 +10,7 @@ import threading
 import time
 
 from features import Handler,events,wait_for
+from ui import browser_window,key
 
 binary=Path(sys.argv[1]).resolve();output=Path(sys.argv[2]).resolve();output.mkdir(parents=True,exist_ok=True)
 server=http.server.ThreadingHTTPServer(('127.0.0.1',0),Handler)
@@ -21,14 +22,8 @@ try:
             p=subprocess.Popen([str(binary),'--profile',temp,'--no-update','--telemetry',str(log),'--quit-after','30',base+'/check'],stdout=subprocess.DEVNULL,stderr=stderr)
             try:
                 wait_for(lambda:any(e['event']=='load_finished' for e in events(log)))
-                end=time.monotonic()+10;wid=None
-                while time.monotonic()<end and p.poll() is None:
-                    result=subprocess.run(['xdotool','search','--onlyvisible','--pid',str(p.pid)],capture_output=True,text=True,timeout=5)
-                    if result.returncode==0 and result.stdout.splitlines():wid=result.stdout.splitlines()[0];break
-                    time.sleep(.1)
-                if not wid:raise AssertionError('No apareció la ventana del navegador')
+                wid=browser_window(p.pid)
                 subprocess.run(['xdotool','windowfocus','--sync',wid],check=True)
-                def key(k):subprocess.run(['xdotool','key','--clearmodifiers','--window',wid,k],check=True)
                 def title():return subprocess.check_output(['xdotool','getwindowname',wid],text=True)
                 key('ctrl+d');wait_for(lambda:(Path(temp)/'favorites.ini').exists())
                 key('ctrl+l');subprocess.run(['xdotool','type','--clearmodifiers','--window',wid,'--delay','1',base+'/set'],check=True);key('Return')

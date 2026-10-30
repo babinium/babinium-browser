@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from ui import browser_window,key
 
 binary=Path(sys.argv[1]).resolve()
 out=Path(sys.argv[2]).resolve();out.mkdir(parents=True,exist_ok=True)
@@ -33,12 +34,7 @@ with tempfile.TemporaryDirectory(prefix='bb-favorites-layout-') as temp:
         p=subprocess.Popen([str(binary),'--profile',temp,'--no-update','--no-block',
             '--screenshot',str(screenshot),'--snapshot-after','4','--quit-after','8'],stdout=subprocess.DEVNULL,stderr=stderr)
         try:
-            end=time.monotonic()+8;wid=None
-            while time.monotonic()<end and p.poll() is None:
-                result=subprocess.run(['xdotool','search','--onlyvisible','--pid',str(p.pid)],capture_output=True,text=True,timeout=5)
-                if result.returncode==0 and result.stdout.splitlines():wid=result.stdout.splitlines()[0];break
-                time.sleep(.1)
-            if not wid:raise AssertionError('No apareció la ventana del navegador')
+            wid=browser_window(p.pid)
             widths=[arg for arg in sys.argv[3:] if arg.isdecimal()]
             if widths:
                 width=int(widths[0])
@@ -46,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix='bb-favorites-layout-') as temp:
                 subprocess.run(['i3-msg',command],check=True,capture_output=True,text=True,timeout=5)
                 time.sleep(.4)
             subprocess.run(['xdotool','windowfocus','--sync',wid],check=True,timeout=5)
-            subprocess.run(['xdotool','key','--clearmodifiers','--window',wid,'ctrl+shift+d'],check=True,timeout=5)
+            key('ctrl+shift+d')
             children=Path('/proc')/str(p.pid)/'task'/str(p.pid)/'children'
             if children.read_text().strip():raise AssertionError('El panel abrió un proceso adicional')
             p.wait(timeout=15)

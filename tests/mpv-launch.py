@@ -17,6 +17,7 @@ import tempfile
 import time
 
 from features import events, wait_for
+from ui import browser_window, key
 
 
 binary = Path(sys.argv[1]).resolve()
@@ -24,17 +25,6 @@ output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
 source = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&utm_source=babinium-test'
 canonical = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
-
-
-def window_for(process):
-    end = time.monotonic() + 12
-    while time.monotonic() < end and process.poll() is None:
-        result = subprocess.run(['xdotool', 'search', '--onlyvisible', '--pid', str(process.pid)],
-                                capture_output=True, text=True, timeout=5)
-        if result.returncode == 0 and result.stdout.splitlines():
-            return result.stdout.splitlines()[0]
-        time.sleep(.1)
-    raise AssertionError('No apareció la ventana de Babinium')
 
 
 def property_value(path, name):
@@ -76,7 +66,8 @@ for mode in os.environ.get('BB_MPV_TEST_MODES', 'fake,real').split(','):
         else:
             code.append(f'os.execv("/usr/bin/mpv",["/usr/bin/mpv","--no-config","--mute=yes",'
                         f'"--ytdl-format=bestvideo[height<=720]+bestaudio/best[height<=720]/best",'
-                        f'{("--input-ipc-server=" + str(ipc))!r}]+sys.argv[1:])')
+                        f'{("--input-ipc-server=" + str(ipc))!r},'
+                        f'{("--log-file=" + str(output / "real-mpv.log"))!r}]+sys.argv[1:])')
         wrapper.write_text('\n'.join(code) + '\n')
         wrapper.chmod(0o755)
         env = dict(os.environ)
@@ -87,15 +78,15 @@ for mode in os.environ.get('BB_MPV_TEST_MODES', 'fake,real').split(','):
         with (output / (mode + '-stderr.log')).open('w') as stderr:
             browser = subprocess.Popen([str(binary), '--profile', str(temp / 'profile'), '--no-update',
                                         '--telemetry', str(telemetry), '--screenshot', str(screen),
-                                        '--snapshot-after', '8', '--quit-after', '120', source],
+                                        '--snapshot-after', '8', '--quit-after', '210', source],
                                        env=env, stdout=subprocess.DEVNULL, stderr=stderr)
             try:
                 wait_browser(lambda: any(e['event'] == 'load_committed' for e in events(telemetry)), browser, 30)
-                wid = window_for(browser)
+                wid = browser_window(browser.pid)
                 wait_browser(screen.exists, browser, 25)
                 subprocess.run(['xdotool', 'windowfocus', '--sync', wid], check=True, timeout=5)
-                for key in ('ctrl+l', 'Tab', 'Return'):
-                    subprocess.run(['xdotool', 'key', '--clearmodifiers', '--window', wid, key], check=True, timeout=5)
+                for shortcut in ('ctrl+l', 'Tab', 'Return'):
+                    key(shortcut)
                     time.sleep(.15)
                 wait_browser(record.exists, browser, 12)
                 launch = json.loads(record.read_text())
@@ -104,7 +95,9 @@ for mode in os.environ.get('BB_MPV_TEST_MODES', 'fake,real').split(','):
                 assert launch['argv'] == ['--force-window=immediate', '--no-terminal', '--', canonical], launch
                 if mode == 'real':
                     wait_for(ipc.exists, 15)
-                    end = time.monotonic() + 90
+                    # YouTube extraction and CDN startup can be slow on an
+                    # unreliable connection; the window remains visible.
+                    end = time.monotonic() + 160
                     before = None
                     while time.monotonic() < end:
                         try:
