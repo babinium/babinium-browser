@@ -9,7 +9,7 @@
     function state(media){
         let s=states.get(media);
         if(!s){s={previousFast:null,mark:null,beforeJump:null,pendingRate:null,pendingAt:0,
-            desiredRate:null,watching:false,retries:0,retrySince:0};states.set(media,s);}
+            desiredRate:null,watching:false,retries:0,retrySince:0,settleTimer:0};states.set(media,s);}
         return s;
     }
     function watchRate(media,s){
@@ -139,10 +139,21 @@
         if(s.pendingRate!==null&&Math.abs(media.playbackRate-s.pendingRate)>.001&&Date.now()-s.pendingAt<1500)return s.pendingRate;
         s.pendingRate=null;return media.playbackRate;
     }
+    function checkRateOnce(media,s){
+        if(s.settleTimer)clearTimeout(s.settleTimer);
+        // A reset may occur without a usable ratechange reaching this listener.
+        // One delayed check covers that case; it is scheduled only after a
+        // user shortcut and never repeats by itself.
+        s.settleTimer=setTimeout(()=>{
+            s.settleTimer=0;
+            if(!media.isConnected||s.desiredRate===null)return;
+            try{if(Math.abs(media.playbackRate-s.desiredRate)>.001)media.playbackRate=s.desiredRate;}catch(_){}
+        },500);
+    }
     function setRate(media,s,value){
         const previous=s.desiredRate;
         s.pendingRate=value;s.pendingAt=Date.now();s.desiredRate=value;s.retries=0;s.retrySince=s.pendingAt;
-        watchRate(media,s);
+        watchRate(media,s);checkRateOnce(media,s);
         try{
             // YouTube may restore its player-level speed after a direct media
             // change. The small main-world adapter synchronizes that state once.
@@ -153,7 +164,7 @@
                 }finally{media.removeAttribute('data-babinium-request-rate');}
             }
             media.playbackRate=value;
-        }catch(error){s.desiredRate=previous;s.pendingRate=null;throw error;}
+        }catch(error){if(s.settleTimer)clearTimeout(s.settleTimer);s.settleTimer=0;s.desiredRate=previous;s.pendingRate=null;throw error;}
     }
     function apply(media,key){
         const s=state(media);let message='';

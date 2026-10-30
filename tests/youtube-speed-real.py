@@ -17,8 +17,11 @@ eval_delay=os.environ.get('BABINIUM_TEST_YOUTUBE_EVAL_AFTER','30')
 initial_timeout=int(os.environ.get('BABINIUM_TEST_YOUTUBE_INITIAL_WAIT','65'))
 quit_after=os.environ.get('BABINIUM_TEST_YOUTUBE_QUIT_AFTER','100')
 with (out/'stderr.log').open('w') as err:
-    p=subprocess.Popen([str(binary),'--profile',str(out/'profile'),'--no-update','--autoplay','--eval',str(driver),
-        '--eval-after',eval_delay,'--quit-after',quit_after,'https://www.youtube.com/watch?v=dQw4w9WgXcQ&hl=en'],stdout=subprocess.DEVNULL,stderr=err,start_new_session=True)
+    command=[str(binary),'--profile',str(out/'profile'),'--no-update','--autoplay','--telemetry',str(out/'events.jsonl'),'--eval',str(driver),
+        '--eval-after',eval_delay,'--quit-after',quit_after]
+    if os.environ.get('BABINIUM_TEST_DATA_DIR'):command+=['--data-dir',os.environ['BABINIUM_TEST_DATA_DIR']]
+    command+=['https://www.youtube.com/watch?v=dQw4w9WgXcQ&hl=en']
+    p=subprocess.Popen(command,stdout=subprocess.DEVNULL,stderr=err,start_new_session=True)
     try:
         wid=browser_window(p.pid)
         last_observation=[None]
@@ -34,6 +37,7 @@ with (out/'stderr.log').open('w') as err:
                 value=state()
                 if value and predicate(value):return value
                 time.sleep(.2)
+            (out/'last-observation.json').write_text(json.dumps(last_observation[0],indent=2)+'\n')
             raise AssertionError('Timed out: '+str(state())+'; last observation: '+str(last_observation[0]))
         initial=wait(lambda s:s.get('height')==360 and s.get('time',0)>2 and not s.get('ad'),seconds=initial_timeout)
         subprocess.run(['xdotool','windowfocus','--sync',wid],check=True)
@@ -50,7 +54,9 @@ with (out/'stderr.log').open('w') as err:
         time.sleep(4);stable=state();assert abs(stable['rate']-1.1)<.001 and not stable['ad'],stable
         assert not stable['indicator'],stable
         if os.environ.get('BABINIUM_TEST_DIAG_ONLY')=='1':
-            print(json.dumps({'initial':initial,'first':first,'stable':stable}),flush=True);sys.exit(0)
+            diagnostic={'initial':initial,'first':first,'stable':stable}
+            (out/'diagnostic.json').write_text(json.dumps(diagnostic,indent=2)+'\n')
+            print(json.dumps(diagnostic),flush=True);sys.exit(0)
         key('F8');forced=wait(lambda s:s.get('forcedResets',0)>=(2 if early_reset else 1) and abs(s.get('rate',0)-1.1)<.001 and not s.get('ad'))
         assert forced['forcedRate']==1,forced
         time.sleep(2);after_forced=state();assert abs(after_forced['rate']-1.1)<.001 and not after_forced['ad'],after_forced

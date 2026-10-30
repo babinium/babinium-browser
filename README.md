@@ -78,7 +78,9 @@ En YouTube, Babinium prioriza la velocidad pedida; su indicador muestra la
 velocidad real, aunque el menú propio de YouTube no coincida por encima de 2×.
 Después de cambiar la velocidad, el navegador escucha cambios del medio y
 reaplica la elegida si el sitio la restablece, con reintentos limitados y sin
-sondeo. Si un reproductor la fuerza repetidamente, puede prevalecer su límite.
+sondeo continuo. Tras cada cambio manual hace además una sola comprobación
+breve para cubrir avisos de cambio perdidos. Si un reproductor la fuerza
+repetidamente, puede prevalecer su límite.
 
 YouTube recibe una preferencia inicial de 360p mediante un método interno del
 reproductor, que YouTube puede cambiar o ignorar. El usuario puede elegir otra

@@ -60,7 +60,7 @@ test('V pins and hides the indicator; its buttons adjust speed',()=>{
     assert.equal(f.html.children.length,1);assert.equal(f.timers.size,0);
     const button=f.html.children[0].children[2];button.listeners.get('click')({stopPropagation(){}});
     assert.equal(v.playbackRate,1.1);f.key('v');assert.equal(f.html.children.length,0);
-    assert.equal(v.listeners.has('ratechange'),true);assert.equal(f.timers.size,0);
+    assert.equal(v.listeners.has('ratechange'),true);assert.equal(f.timers.size,1);f.flush();assert.equal(f.timers.size,0);
 });
 test('does not consume typing, browser shortcuts, composition or synthetic events',()=>{
     const f=fixture(),v=f.video();f.media.push(v);
@@ -89,7 +89,7 @@ test('finds dynamically added media and media in an open shadow root',()=>{
     f.key('d');assert.equal(v.playbackRate,1.1);f.document.roots=[];f.media.push(v);f.key('d');assert.equal(v.playbackRate,1.2);
 });
 test('temporary indicators and position listeners are removed after use',()=>{
-    const f=fixture(),v=f.video();f.media.push(v);f.key('d');assert.equal(f.timers.size,1);assert.equal(f.html.children.length,1);
+    const f=fixture(),v=f.video();f.media.push(v);f.key('d');assert.equal(f.timers.size,2);assert.equal(f.html.children.length,1);
     f.flush();assert.equal(f.html.children.length,0);assert.equal(v.listeners.has('ratechange'),true);assert.equal(f.handlers.has('scroll'),false);
     assert.equal(f.timers.size,0);
 });
@@ -126,6 +126,18 @@ test('a page cannot hide a rate reset by stopping the target event',()=>{
     const f=fixture(),v=f.video();f.media.push(v);f.key('d');
     const capture=f.handlers.get('document:ratechange');assert.equal(typeof capture,'function');
     v.playbackRate=1;capture({target:v});assert.equal(v.playbackRate,1.1);
+});
+test('a reset without a delivered ratechange does not lose the selected speed',()=>{
+    const f=fixture(),v=f.video();f.media.push(v);f.key('d');
+    assert.equal(v.playbackRate,1.1);
+    v.playbackRate=1;f.flush();
+    assert.equal(v.playbackRate,1.1);
+});
+test('rapid shortcuts leave only one pending rate check for the latest choice',()=>{
+    const f=fixture(),v=f.video();f.media.push(v);
+    for(let i=0;i<6;i++)f.key('d');
+    assert.equal(v.playbackRate,1.6);assert.equal(f.timers.size,2);
+    v.playbackRate=1;f.flush();assert.equal(v.playbackRate,1.6);assert.equal(f.timers.size,0);
 });
 test('falls back to the media element if the YouTube adapter is unavailable',()=>{
     const f=fixture({host:'youtube.com'}),v=f.video();f.media.push(v);v.dispatchEvent=()=>true;
