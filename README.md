@@ -127,7 +127,7 @@ y la evidencia de pruebas para el alcance comprobado.
 
 ```sh
 sudo apt install build-essential pkg-config libwebkit2gtk-4.1-dev \
-  libgtk-3-dev libjson-glib-dev python3 nodejs ca-certificates
+  libgtk-3-dev libjson-glib-dev libsoup-3.0-dev python3 nodejs ca-certificates
 # Con trixie-backports configurado (Rust >= 1.88):
 sudo apt install -t trixie-backports cargo rustc
 make -j2

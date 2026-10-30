@@ -250,7 +250,6 @@ static void favorites_rebuild(void){
         gtk_widget_set_hexpand(label,TRUE);gtk_box_pack_start(GTK_BOX(content),label,FALSE,FALSE,0);
         if(g_ascii_strcasecmp(shown,site)){
             GtkWidget *site_label=gtk_label_new(site);gtk_label_set_xalign(GTK_LABEL(site_label),0);
-            gtk_style_context_add_class(gtk_widget_get_style_context(site_label),"dim-label");
             gtk_box_pack_start(GTK_BOX(content),site_label,FALSE,FALSE,0);
         }
         gtk_container_add(GTK_CONTAINER(open),content);

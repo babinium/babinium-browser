@@ -21,7 +21,12 @@ try:
             p=subprocess.Popen([str(binary),'--profile',temp,'--no-update','--telemetry',str(log),'--quit-after','30',base+'/check'],stdout=subprocess.DEVNULL,stderr=stderr)
             try:
                 wait_for(lambda:any(e['event']=='load_finished' for e in events(log)))
-                wid=subprocess.check_output(['xdotool','search','--sync','--onlyvisible','--pid',str(p.pid)],text=True,timeout=8).splitlines()[0]
+                end=time.monotonic()+10;wid=None
+                while time.monotonic()<end and p.poll() is None:
+                    result=subprocess.run(['xdotool','search','--onlyvisible','--pid',str(p.pid)],capture_output=True,text=True,timeout=5)
+                    if result.returncode==0 and result.stdout.splitlines():wid=result.stdout.splitlines()[0];break
+                    time.sleep(.1)
+                if not wid:raise AssertionError('No apareció la ventana del navegador')
                 subprocess.run(['xdotool','windowfocus','--sync',wid],check=True)
                 def key(k):subprocess.run(['xdotool','key','--clearmodifiers','--window',wid,k],check=True)
                 def title():return subprocess.check_output(['xdotool','getwindowname',wid],text=True)
@@ -30,6 +35,13 @@ try:
                 wait_for(lambda:'Fixture /set' in title())
                 key('ctrl+shift+d');time.sleep(.4);key('Tab');key('Return')
                 wait_for(lambda:'Fixture /check' in title())
-                print('Favorite opened from GTK popover: passed',flush=True)
+                # Allow the closing transition to finish, then click the
+                # remove button of the first row in the wide desktop popover.
+                time.sleep(1);key('ctrl+shift+d');time.sleep(.5)
+                geometry=subprocess.check_output(['xdotool','getwindowgeometry','--shell',wid],text=True)
+                width=int(dict(line.split('=',1) for line in geometry.splitlines() if '=' in line)['WIDTH'])
+                subprocess.run(['xdotool','mousemove','--window',wid,str(width-80),'78','click','1'],check=True,timeout=5)
+                wait_for(lambda:base+'/check' not in (Path(temp)/'favorites.ini').read_text())
+                print('Favorite opened and removed from GTK popover: passed',flush=True)
             finally:p.terminate();p.wait(timeout=10)
 finally:server.shutdown()
