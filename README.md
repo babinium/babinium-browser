@@ -8,7 +8,7 @@ la simplicidad de surf; la interfaz es nueva. Licencia GPL-3.0-o-posterior.
 Se validaron reproducción real de YouTube, bloqueo de solicitudes publicitarias
 y modificación de datos del reproductor. La eliminación de preroll/midroll no
 quedó demostrada porque el control tampoco mostró anuncios de vídeo.
-Véanse los informes de [validación 0.4.4](docs/validation-0.4.4.md), [validación 0.4.3](docs/validation-0.4.3.md),
+Véanse los informes de [validación 0.4.5](docs/validation-0.4.5.md), [validación 0.4.4](docs/validation-0.4.4.md), [validación 0.4.3](docs/validation-0.4.3.md),
 [validación 0.4.2](docs/validation-0.4.2.md), [validación 0.3.1](docs/validation-0.3.1.md),
 [validación 0.3.0](docs/validation-0.3.md), [validación 0.2](docs/validation-0.2.md) y del
 [prototipo inicial 0.1](docs/validation.md).

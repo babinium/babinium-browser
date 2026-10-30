@@ -42,12 +42,12 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
   para reducir el trabajo gráfico, manteniendo el ajuste manual y su persistencia.
   Los menús reconocidos son inglés y español; si YouTube cambia la interfaz o
   usa otro idioma, se mantiene su comportamiento normal.
-- [ ] En videos de YouTube, ofrecer «Abrir MPV» y permitir que MPV continúe
+- [x] En videos de YouTube, ofrecer «Abrir MPV» y permitir que MPV continúe
   reproduciendo después de cerrar Babinium, sin limitar la resolución por
   modelo de equipo. Comprobar la reproducción real y sus dependencias.
-- [ ] Investigar y reducir cuando sea posible el consumo de CPU en Infobae y
+- [x] Investigar y reducir cuando sea posible el consumo de CPU en Infobae y
   YouTube, midiendo sin quitar por defecto las funciones solicitadas.
-- [ ] Evaluar si un control de JavaScript por sitio merece incorporarse, tras
+- [x] Evaluar si un control de JavaScript por sitio merece incorporarse, tras
   medir consumo y compatibilidad en Infobae y YouTube.
 - [x] Conservar el control del usuario cuando abra el menú durante la
   configuración inicial; la versión 0.3.1 se probó con selección real de 720p.
@@ -61,7 +61,7 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
 - [x] Mostrar «Babinium» al extremo derecho de la barra de pestañas.
 - [x] Mostrar negro desde el primer instante en una pestaña nueva vacía.
 - [x] Permitir guardar, consultar y quitar favoritos y conservarlos al cerrar.
-- [ ] Ampliar el panel de favoritos y permitir leer los títulos en varias
+- [x] Ampliar el panel de favoritos y permitir leer los títulos en varias
   líneas; mostrar solo el nombre principal del sitio (por ejemplo, «youtube»),
   conservando internamente la dirección completa para abrir cada favorito.
 - [x] Integrar controles de velocidad para video y audio HTML5 con los atajos

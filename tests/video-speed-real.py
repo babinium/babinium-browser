@@ -15,6 +15,7 @@ import tempfile
 import threading
 import time
 import wave
+from ui import browser_window,key
 
 binary=Path(sys.argv[1]).resolve();out=Path(sys.argv[2]).resolve();out.mkdir(parents=True,exist_ok=True)
 with tempfile.TemporaryDirectory(prefix='bb-speed-media-') as tmp:
@@ -69,14 +70,7 @@ with tempfile.TemporaryDirectory(prefix='bb-speed-media-') as tmp:
         p=subprocess.Popen([str(binary),'--profile',str(profile),'--no-update','--no-block','--quit-after','65',
             f'http://127.0.0.1:{parent.server_port}/{case}'],stdout=subprocess.DEVNULL,stderr=log)
         try:
-            # On a real desktop, an unrelated window can disappear while
-            # xdotool enumerates the X11 window tree. Retry that transient race.
-            end=time.monotonic()+10;wid=None
-            while time.monotonic()<end and p.poll() is None:
-                result=subprocess.run(['xdotool','search','--onlyvisible','--pid',str(p.pid)],capture_output=True,text=True,timeout=5)
-                if result.returncode==0 and result.stdout.splitlines():wid=result.stdout.splitlines()[0];break
-                time.sleep(.1)
-            if not wid:raise AssertionError(f'{case}: browser window did not appear')
+            wid=browser_window(p.pid)
             def state():
                 title=subprocess.check_output(['xdotool','getwindowname',wid],text=True,timeout=5).strip()
                 if not title.startswith('BBSPEED:'):return None
@@ -95,7 +89,6 @@ with tempfile.TemporaryDirectory(prefix='bb-speed-media-') as tmp:
                 x=round((int(size['WIDTH'])-s['viewport'][0])/2+box['x']+box['w']/2)
                 y=round(int(size['HEIGHT'])-s['viewport'][1]+box['y']+box['h']/2)
                 subprocess.run(['xdotool','mousemove','--window',wid,str(x),str(y),'click','1'],check=True,timeout=5)
-            def key(k):subprocess.run(['xdotool','key','--clearmodifiers','--window',wid,k],check=True,timeout=5)
             def rate(value):return lambda s:abs(s['rate']-value)<.001
             def at(value):return lambda s:abs(s['time']-value)<.2
             s=wait(lambda s:s.get('ready',0)>=1 and s.get('duration') is not None and s['duration']>30)
