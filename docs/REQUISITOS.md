@@ -77,11 +77,11 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
 - [x] Ampliar el panel de favoritos y permitir leer los títulos en varias
   líneas; mostrar solo el nombre principal del sitio (por ejemplo, «youtube»),
   conservando internamente la dirección completa para abrir cada favorito.
-- [x] Integrar controles de velocidad para video y audio HTML5 con los atajos
-  predeterminados de Video Speed Controller, sin instalar una extensión ni
-  habilitar procesos o sondeo continuos adicionales. Priorizar la velocidad
-  elegida con Babinium si YouTube intenta volver a su propio ajuste; las
-  restricciones de cada medio o reproductor pueden impedir algunos cambios.
+- [ ] Usar solo { y } para cambiar la velocidad en pasos de 0,5× en medios HTML5
+  fuera de YouTube, con indicador temporal y sin los demás controles integrados.
+  Este pedido reemplaza la elección anterior de atajos de Video Speed Controller.
+  Conservar la integración sin extensión ni sondeo continuo; los reproductores
+  pueden imponer límites. Pendiente de prueba por Miguel.
 - [x] Abrir una pestaña de ayuda al pulsar «Babinium» en la barra de pestañas;
   incluir los controles de velocidad y permitir agregar información más adelante.
 - [x] Conservar cookies, almacenamiento local e IndexedDB entre reinicios; se

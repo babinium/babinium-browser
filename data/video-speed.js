@@ -2,13 +2,12 @@
 // Built-in, event-driven controls for HTML media. No extension or background process.
 (() => {
     'use strict';
-    const keys=new Set(['s','d','r','z','x','g','v','m','j']);
     const states=new WeakMap();
-    let indicator=null, label=null, current=null, pinned=false, hideTimer=0, following=false;
+    let indicator=null, label=null, current=null, hideTimer=0, following=false;
 
     function state(media){
         let s=states.get(media);
-        if(!s){s={previousFast:null,mark:null,beforeJump:null,pendingRate:null,pendingAt:0,
+        if(!s){s={pendingRate:null,pendingAt:0,
             desiredRate:null,watching:false,retries:0,retrySince:0,settleTimer:0};states.set(media,s);}
         return s;
     }
@@ -64,7 +63,7 @@
     }
     function position(){
         if(!indicator||!current)return;
-        if(!current.isConnected){pinned=false;hide();return;}
+        if(!current.isConnected){hide();return;}
         const parent=document.fullscreenElement||document.documentElement;
         if(parent&&indicator.parentNode!==parent)parent.append(indicator);
         const r=current.getBoundingClientRect();
@@ -102,19 +101,10 @@
         if(current!==media){if(current)releaseUnusedRate(current);current=media;watchRate(media,state(media));}
         if(!indicator){
             indicator=document.createElement('div');
-            indicator.setAttribute('role','group');indicator.setAttribute('aria-label','Velocidad de reproducción');
+            indicator.setAttribute('role','status');indicator.setAttribute('aria-label','Velocidad de reproducción');
             indicator.setAttribute('data-babinium-speed','');
-            indicator.style.cssText='all:initial;position:fixed;z-index:2147483647;display:flex;align-items:center;gap:4px;padding:3px 5px;border-radius:4px;background:rgba(0,0,0,.88);color:#fff;font:14px sans-serif;box-shadow:0 1px 5px #0009;';
-            const minus=document.createElement('button'),plus=document.createElement('button');label=document.createElement('span');
-            for(const button of [minus,plus]){
-                button.type='button';button.style.cssText='all:initial;cursor:pointer;color:#fff;font:16px sans-serif;padding:0 5px;';
-                button.addEventListener('pointerdown',e=>e.stopPropagation());
-            }
-            minus.textContent='−';minus.title='Reducir velocidad (S)';minus.setAttribute('aria-label',minus.title);
-            plus.textContent='+';plus.title='Aumentar velocidad (D)';plus.setAttribute('aria-label',plus.title);
-            minus.addEventListener('click',e=>{e.stopPropagation();if(current)apply(current,'s');});
-            plus.addEventListener('click',e=>{e.stopPropagation();if(current)apply(current,'d');});
-            label.setAttribute('aria-live','polite');indicator.append(minus,label,plus);
+            indicator.style.cssText='all:initial;position:fixed;z-index:2147483647;pointer-events:none;display:block;padding:3px 7px;border-radius:4px;background:rgba(0,0,0,.88);color:#fff;font:14px sans-serif;box-shadow:0 1px 5px #0009;';
+            label=document.createElement('span');label.setAttribute('aria-live','polite');indicator.append(label);
         }
         const parent=document.fullscreenElement||document.documentElement;
         if(indicator.parentNode!==parent)parent.append(indicator);
@@ -125,15 +115,7 @@
             document.addEventListener('fullscreenchange',position);following=true;
         }
         if(hideTimer)clearTimeout(hideTimer);hideTimer=0;
-        if(!pinned)hideTimer=setTimeout(hide,2500);
-    }
-    function seek(media,value){
-        let target=Math.max(0,value);
-        if(Number.isFinite(media.duration))target=Math.min(target,media.duration);
-        if(media.seekable?.length){
-            try{target=Math.max(media.seekable.start(0),Math.min(target,media.seekable.end(media.seekable.length-1)));}catch(_){}
-        }
-        media.currentTime=target;
+        hideTimer=setTimeout(hide,2500);
     }
     function currentRate(media,s){
         if(s.pendingRate!==null&&Math.abs(media.playbackRate-s.pendingRate)>.001&&Date.now()-s.pendingAt<1500)return s.pendingRate;
@@ -169,29 +151,12 @@
     function apply(media,key){
         const s=state(media);let message='';
         try{
-            switch(key){
-            case 's':case 'd':{
-                const next=Math.round((currentRate(media,s)+(key==='s'?-.1:.1))*100)/100;
-                const value=Math.max(.07,Math.min(16,next));setRate(media,s,value);message=value.toFixed(2)+'×';break;
-            }
-            case 'r':setRate(media,s,1);message='1.00×';break;
-            case 'g':{
-                const current=currentRate(media,s);let value;
-                if(Math.abs(current-1.8)<.001){value=s.previousFast??1;s.previousFast=null;}
-                else{s.previousFast=current;value=1.8;}
-                setRate(media,s,value);message=value.toFixed(2)+'×';
-                break;
-            }
-            case 'z':seek(media,media.currentTime-10);break;
-            case 'x':seek(media,media.currentTime+10);break;
-            case 'm':s.mark=media.currentTime;s.beforeJump=null;message='Marca guardada';break;
-            case 'j':
-                if(s.mark===null){message='Sin marca';break;}
-                if(s.beforeJump!==null&&Math.abs(media.currentTime-s.mark)<.05){const back=s.beforeJump;s.beforeJump=null;seek(media,back);}
-                else{s.beforeJump=media.currentTime;seek(media,s.mark);}
-                message='Marca';break;
-            case 'v':pinned=!pinned;if(!pinned){hide();return;}break;
-            }
+            const current=currentRate(media,s);
+            const next=Math.round((current+(key==='{' ? -.5 : .5))*1000)/1000;
+            // Keep valid rates and do not reverse direction if the site starts
+            // outside the normal range.
+            const value=Math.max(Math.min(.5,current),Math.min(Math.max(16,current),next));
+            setRate(media,s,value);message=value.toFixed(2)+'×';
         }catch(_){message='Velocidad no disponible';}
         show(media,message);
     }
@@ -202,8 +167,11 @@
         if(s?.watching)rateChanged({currentTarget:media});
     },true);
     window.addEventListener('keydown',event=>{
-        if(!event.isTrusted||event.ctrlKey||event.altKey||event.metaKey||event.shiftKey||event.isComposing)return;
-        const key=event.key?.toLowerCase();if(!keys.has(key)||typing(event))return;
+        if(!event.isTrusted||event.metaKey||event.isComposing)return;
+        const key=event.key;if(key!=='{'&&key!=='}')return;
+        // Braces may require Shift or AltGr depending on the keyboard layout.
+        const altGraph=event.getModifierState?.('AltGraph')===true;
+        if(((event.ctrlKey||event.altKey)&&!altGraph)||typing(event))return;
         const media=select();if(!media)return;
         event.preventDefault();event.stopImmediatePropagation();apply(media,key);
     },true);

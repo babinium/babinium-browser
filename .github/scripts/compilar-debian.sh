@@ -3,6 +3,7 @@ set -euo pipefail
 make build/bin/babinium-browser
 make -j2
 make resources
+make test
 make package
 mkdir -p artifacts/bundle
 cp -r build/bin build/lib build/share artifacts/bundle/

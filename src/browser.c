@@ -270,12 +270,7 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_label_set_xalign(GTK_LABEL(subtitle),0);gtk_box_pack_start(GTK_BOX(body),subtitle,FALSE,FALSE,0);
     GtkWidget *grid=gtk_grid_new();gtk_grid_set_column_spacing(GTK_GRID(grid),24);gtk_grid_set_row_spacing(GTK_GRID(grid),10);
     static const char *rows[][2]={
-        {"S / D","Reducir / aumentar la velocidad en 0,1×"},
-        {"R","Volver a la velocidad normal (1×)"},
-        {"G","Alternar entre 1,8× y la velocidad anterior"},
-        {"Z / X","Retroceder / avanzar 10 segundos"},
-        {"M / J","Guardar una marca / volver a ella"},
-        {"V","Mostrar o esconder el indicador de velocidad"}
+        {"{ / }","Reducir / aumentar la velocidad en 0,5×"}
     };
     for(guint i=0;i<G_N_ELEMENTS(rows);i++){
         GtkWidget *key=gtk_label_new(rows[i][0]),*description=gtk_label_new(rows[i][1]);
@@ -514,7 +509,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.11");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.12");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);

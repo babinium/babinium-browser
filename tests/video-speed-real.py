@@ -39,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix='bb-speed-media-') as tmp:
             if path=='/embed':
                 page=f'''<!doctype html><title>waiting</title><iframe id="child" src="http://127.0.0.1:{child.server_port}/video" style="width:720px;height:520px;border:0"></iframe>
                 <script>addEventListener('message',e=>{{if(!e.data?.bbFixture)return;const d=e.data.bbFixture,r=document.querySelector('iframe').getBoundingClientRect();
-                for(const k of ['mediaRect','inputRect','playRect','pauseRect','minusRect','plusRect'])if(d[k]){{d[k].x+=r.x;d[k].y+=r.y;}}d.viewport=[innerWidth,innerHeight];document.title='BBSPEED:'+btoa(JSON.stringify(d));}});</script>'''
+                for(const k of ['mediaRect','inputRect','playRect','pauseRect'])if(d[k]){{d[k].x+=r.x;d[k].y+=r.y;}}d.viewport=[innerWidth,innerHeight];document.title='BBSPEED:'+btoa(JSON.stringify(d));}});</script>'''
             else:
                 tag='audio' if path=='/audio' else 'video';src='/tone.wav' if tag=='audio' else '/clip.webm'
                 markup=f'<{tag} id="media" controls preload="auto" src="{src}" style="width:480px;height:{54 if tag=="audio" else 270}px;display:block;background:#223"></{tag}>'
@@ -59,7 +59,7 @@ with tempfile.TemporaryDirectory(prefix='bb-speed-media-') as tmp:
                 function report(){{let d={{rate:v.playbackRate,time:v.currentTime,duration:v.duration,ready:v.readyState,paused:v.paused,
                     input:document.querySelector('#input').value,mediaRect:rect(v),inputRect:rect(document.querySelector('#input')),
                     playRect:rect(document.querySelector('#play')),pauseRect:rect(document.querySelector('#pause')),viewport:[innerWidth,innerHeight],indicator:!!document.querySelector('[data-babinium-speed]'),
-                    minusRect:rect(document.querySelector('[data-babinium-speed] button:first-child')),plusRect:rect(document.querySelector('[data-babinium-speed] button:last-child'))}};
+                    speedButtons:document.querySelectorAll('[data-babinium-speed] button').length}};
                     if(parent!==window)parent.postMessage({{bbFixture:d}},'*');else document.title='BBSPEED:'+btoa(JSON.stringify(d));}}
                 setInterval(report,250);report();</script>'''
             data=page.encode();self.send_response(200);self.send_header('Content-Type','text/html; charset=utf-8');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
@@ -94,14 +94,15 @@ with tempfile.TemporaryDirectory(prefix='bb-speed-media-') as tmp:
             s=wait(lambda s:s.get('ready',0)>=1 and s.get('duration') is not None and s['duration']>30)
             subprocess.run(['xdotool','windowfocus','--sync',wid],check=True);click('mediaRect',s);click('pauseRect',s)
             wait(lambda s:s['paused'] and abs(s['time'])<.2)
-            key('d');s=wait(lambda s:rate(1.1)(s) and s.get('plusRect'));click('plusRect',s);s=wait(rate(1.2));
-            click('minusRect',s);wait(rate(1.1));key('s');wait(rate(1));key('g');wait(rate(1.8));key('g');wait(rate(1));
-            key('d');wait(rate(1.1));key('r');wait(rate(1));key('x');wait(at(10));key('z');wait(at(0))
-            key('m');key('x');wait(at(10));key('j');wait(at(0));key('j');wait(at(10))
-            key('v');wait(lambda s:s['indicator']);key('v');wait(lambda s:not s['indicator'])
-            s=state();click('inputRect',s);key('d');s=wait(lambda s:s.get('input')=='d');assert abs(s['rate']-1)<.001,s
-            click('playRect',s);s=wait(lambda s:not s['paused']);before=s['time'];key('d');wait(rate(1.1));s=wait(lambda s:s['time']>before+.5)
-            print(json.dumps({'case':case,'speed':s['rate'],'playing':not s['paused'],'time':round(s['time'],2),'input_protected':s['input']=='d'}),flush=True)
+            key('braceright');s=wait(lambda s:rate(1.5)(s) and s['indicator']);assert s['speedButtons']==0,s
+            key('braceright');wait(rate(2));key('braceleft');wait(rate(1.5));key('braceleft');wait(rate(1))
+            key('braceleft');wait(rate(.5));key('braceleft');wait(rate(.5));key('braceright');wait(rate(1))
+            for old in ('s','d','r','g','z','x','m','j','v'):
+                key(old)
+            s=wait(lambda s:rate(1)(s) and at(0)(s));click('inputRect',s);key('braceright')
+            s=wait(lambda s:s.get('input')=='}');assert abs(s['rate']-1)<.001,s
+            click('playRect',s);s=wait(lambda s:not s['paused']);before=s['time'];key('braceright');wait(rate(1.5));s=wait(lambda s:s['time']>before+.5)
+            print(json.dumps({'case':case,'speed':s['rate'],'playing':not s['paused'],'time':round(s['time'],2),'input_protected':s['input']=='}'}),flush=True)
         finally:p.terminate();p.wait(timeout=10);log.close()
     try:
         for case in (sys.argv[3:] or ('video','audio','shadow','embed','reset-once','reset-stop')):run(case)

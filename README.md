@@ -22,8 +22,8 @@ pedidos y los puntos que todavía requieren pruebas.
 - Pestañas vacías negras y «Babinium ⚙» en el extremo derecho de la barra.
 - Favoritos en el perfil, con estrella y panel amplio de títulos y nombres de
   sitio; cookies y datos de sitios persistentes entre reinicios.
-- Control integrado de velocidad para medios HTML5, con indicador y los atajos de
-  [Video Speed Controller](https://github.com/igrigorik/videospeed). Al pulsar
+- Control integrado de velocidad para medios HTML5 mediante { y }, con un
+  indicador temporal. Al pulsar
   «Babinium» se abre una pestaña de ayuda GTK.
 - Al abrir un video de YouTube, Babinium mantiene la página abierta, deshabilita
   su reproducción y abre el video automáticamente en MPV. Otro video reemplaza
@@ -60,7 +60,7 @@ sin instalar. Para el bundle se necesitan las dependencias de ejecución del paq
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.4.11_amd64.deb
+sudo apt install ./babinium-browser_0.4.12_amd64.deb
 ```
 
 «Abrir MPV» necesita una versión reciente de `yt-dlp`: la versión de abril de
@@ -96,13 +96,13 @@ para retirar los scriptlets ya ejecutados.
 El contador muestra solicitudes bloqueadas acumuladas en la pestaña, incluyendo
 seguimiento; no es un contador de anuncios de vídeo.
 
-Con un video o audio presente: S/D disminuyen/aumentan 0,1×; R vuelve a 1×;
-G alterna entre 1,8× y la velocidad anterior; Z/X retroceden/avanzan 10 s;
-M guarda una marca, J vuelve a ella y V fija u oculta el indicador. El indicador
-también ofrece botones −/+. Los atajos no se activan mientras se escribe ni con
-Ctrl, Alt, Super o Mayúsculas. Para medios en un iframe de otro origen, hacé
-clic en el reproductor para enfocarlo. Algunos reproductores, medios protegidos,
-elementos en componentes cerrados o transmisiones pueden limitar estos controles.
+En un video o audio fuera de YouTube, { y } disminuyen o aumentan la velocidad
+0,5× por pulsación, con un mínimo de 0,5× y un máximo de 16×. Aparece un indicador
+temporal. Los atajos no se activan mientras se escribe; se permiten Mayúsculas o
+AltGr para escribir las llaves según la distribución del teclado. Para medios en
+un iframe de otro origen, hacé clic en el reproductor para enfocarlo. Algunos
+reproductores, medios protegidos, elementos en componentes cerrados o
+transmisiones pueden limitar estos controles.
 En videos de YouTube incrustados en otros sitios, Babinium prioriza la velocidad
 pedida; su indicador muestra la velocidad real, aunque el menú propio de YouTube
 no coincida por encima de 2×. En la ventana de MPV se usan sus propios controles:
