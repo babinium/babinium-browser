@@ -46,16 +46,16 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
   reemplazar el video actual en MPV al elegir otro. Tras cerrar MPV, el botón
   lo vuelve a abrir. Solo aplica a YouTube. Miguel informó que funciona; falta
   comprobar si la página descarga datos del video.
-- [ ] Ofrecer en la pestaña «Babinium» un selector persistente de resolución de
-  MPV entre 144p y 1080p, con 720p por defecto. Pendiente de prueba por Miguel.
-- [ ] Añadir allí un control persistente para cargar subtítulos en MPV,
+- [x] Ofrecer en la pestaña «Babinium» un selector persistente de resolución de
+  MPV entre 144p y 1080p, con 720p por defecto. Comprobado el cambio a 360p.
+- [x] Añadir allí un control persistente para cargar subtítulos en MPV,
   desactivado inicialmente, con preferencia por español y otro idioma solo si
-  no hay español. Pendiente de prueba por Miguel.
-- [ ] Aclarar los controles para videos fuera de YouTube y mostrar en la ayuda
-  los controles básicos de MPV para YouTube. Pendiente de prueba por Miguel.
-- [ ] Mostrar en la ayuda las teclas de MPV para velocidad fina ([ y ]) y para
+  no hay español. Comprobado con una pista automática española y con ejemplos.
+- [x] Aclarar los controles para videos fuera de YouTube y mostrar en la ayuda
+  los controles básicos de MPV para YouTube.
+- [x] Mostrar en la ayuda las teclas de MPV para velocidad fina ([ y ]) y para
   dividirla o duplicarla ({ y }). Limpiar repeticiones y solapamientos de los
-  subtítulos automáticos de YouTube; pendiente de prueba por Miguel.
+  subtítulos automáticos SRT; comprobado con un video y ejemplos sintéticos.
 - [x] Investigar y reducir cuando sea posible el consumo de CPU en Infobae y
   YouTube, midiendo sin quitar por defecto las funciones solicitadas.
 - [x] Evaluar si un control de JavaScript por sitio merece incorporarse, tras
@@ -77,11 +77,11 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
 - [x] Ampliar el panel de favoritos y permitir leer los títulos en varias
   líneas; mostrar solo el nombre principal del sitio (por ejemplo, «youtube»),
   conservando internamente la dirección completa para abrir cada favorito.
-- [ ] Usar solo { y } para cambiar la velocidad en pasos de 0,5× en medios HTML5
+- [x] Usar solo { y } para cambiar la velocidad en pasos de 0,5× en medios HTML5
   fuera de YouTube, con indicador temporal y sin los demás controles integrados.
   Este pedido reemplaza la elección anterior de atajos de Video Speed Controller.
   Conservar la integración sin extensión ni sondeo continuo; los reproductores
-  pueden imponer límites. Pendiente de prueba por Miguel.
+  pueden imponer límites. Comprobado en WebKit visible y con el teclado de Miguel.
 - [x] Abrir una pestaña de ayuda al pulsar «Babinium» en la barra de pestañas;
   incluir los controles de velocidad y permitir agregar información más adelante.
 - [x] Conservar cookies, almacenamiento local e IndexedDB entre reinicios; se

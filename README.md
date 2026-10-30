@@ -9,9 +9,9 @@ En versiones anteriores se validaron reproducción real de YouTube, bloqueo de
 solicitudes publicitarias y modificación de datos del reproductor. La eliminación
 de preroll/midroll no quedó demostrada porque el control tampoco mostró anuncios
 de vídeo. Miguel informó que la apertura automática de MPV de la versión 0.4.7
-funciona; el selector de resolución y la opción de subtítulos quedan pendientes
-de prueba manual.
-Véanse los informes de [validación 0.4.5](docs/validation-0.4.5.md), [validación 0.4.4](docs/validation-0.4.4.md), [validación 0.4.3](docs/validation-0.4.3.md),
+funciona; en 0.4.12 se verificaron nuevamente MPV, resolución, subtítulos y los
+nuevos controles de velocidad.
+Véanse los informes de [validación 0.4.12](docs/validation-0.4.12.md), [validación 0.4.5](docs/validation-0.4.5.md), [validación 0.4.4](docs/validation-0.4.4.md), [validación 0.4.3](docs/validation-0.4.3.md),
 [validación 0.4.2](docs/validation-0.4.2.md), [validación 0.3.1](docs/validation-0.3.1.md),
 [validación 0.3.0](docs/validation-0.3.md), [validación 0.2](docs/validation-0.2.md) y del
 [prototipo inicial 0.1](docs/validation.md).
@@ -80,7 +80,7 @@ en el video. La opción de subtítulos también se aplica al abrir o volver a ab
 un video; las pistas generadas automáticamente pueden contener errores. Para
 videos que no son transmisiones en vivo se intenta limpiar repeticiones y
 solapamientos de subtítulos automáticos SRT; si no se puede, se usa la pista
-original. Esta corrección está pendiente de prueba manual.
+original. Se verificó con un video de YouTube; otros formatos pueden variar.
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
 perfiles de prueba independientes. No abrir simultáneamente dos instancias sobre

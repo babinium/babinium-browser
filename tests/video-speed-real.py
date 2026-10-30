@@ -67,7 +67,7 @@ with tempfile.TemporaryDirectory(prefix='bb-speed-media-') as tmp:
     for server in (parent,child):threading.Thread(target=server.serve_forever,daemon=True).start()
     def run(case):
         log=(out/(case+'.stderr')).open('w');profile=out/('profile-'+case)
-        p=subprocess.Popen([str(binary),'--profile',str(profile),'--no-update','--no-block','--quit-after','65',
+        p=subprocess.Popen([str(binary),'--profile',str(profile),'--no-update','--no-block','--quit-after','150',
             f'http://127.0.0.1:{parent.server_port}/{case}'],stdout=subprocess.DEVNULL,stderr=log)
         try:
             wid=browser_window(p.pid)

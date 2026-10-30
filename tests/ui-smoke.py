@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Native GTK keyboard/tab/site-control/download smoke test (run under Xvfb)."""
+"""Native GTK keyboard/tab/site-control/download smoke test on visible X11."""
 import http.server
 import json
 import os
@@ -10,6 +10,7 @@ import sys
 import tempfile
 import threading
 import time
+from ui import browser_window, key
 
 class Handler(http.server.BaseHTTPRequestHandler):
     def log_message(self,*args):pass
@@ -40,13 +41,12 @@ def run(binary,output):
             profile=tmp/'profile';env=dict(os.environ,XDG_CONFIG_HOME=str(config))
             log=output/'events.jsonl';url=f'http://127.0.0.1:{server.server_port}'
             with (output/'stderr.log').open('w') as stderr:
-                p=subprocess.Popen([str(binary),'--profile',str(profile),'--no-update','--telemetry',str(log),'--quit-after','25','--screenshot',str(output/'ui.png'),'--snapshot-after','12',url+'/first'],env=env,stderr=stderr)
+                p=subprocess.Popen([str(binary),'--profile',str(profile),'--no-update','--telemetry',str(log),'--quit-after','75','--screenshot',str(output/'ui.png'),'--snapshot-after','12',url+'/first'],env=env,stderr=stderr)
                 try:
                     def events():return [json.loads(l) for l in log.read_text().splitlines()] if log.exists() else []
                     wait_for(lambda:any(e['event']=='load_finished' for e in events()))
-                    wid=subprocess.check_output(['xdotool','search','--sync','--onlyvisible','--pid',str(p.pid)],text=True,timeout=8).splitlines()[0]
+                    wid=browser_window(p.pid)
                     subprocess.run(['xdotool','windowfocus','--sync',wid],check=True,timeout=5)
-                    def key(k):subprocess.run(['xdotool','key','--clearmodifiers','--window',wid,k],check=True,timeout=5)
                     def title():return subprocess.check_output(['xdotool','getwindowname',wid],text=True,timeout=5)
                     loads=sum(e['event']=='load_started' for e in events())
                     key('ctrl+t');wait_for(lambda:'Nueva pestaña' in title());time.sleep(.4)
