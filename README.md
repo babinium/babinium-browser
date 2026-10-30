@@ -103,9 +103,9 @@ elementos en componentes cerrados o transmisiones pueden limitar estos controles
 En videos de YouTube incrustados en otros sitios, Babinium prioriza la velocidad
 pedida; su indicador muestra la velocidad real, aunque el menú propio de YouTube
 no coincida por encima de 2×. En la ventana de MPV se usan sus propios controles:
-espacio o P pausa; las flechas izquierda y derecha retroceden o avanzan; [ y ]
-cambian la velocidad; Retroceso vuelve a 1×; 9 y 0 cambian el volumen; M silencia;
-F y Esc controlan la pantalla completa; V muestra u oculta subtítulos y Q cierra
+espacio o p pausa; las flechas izquierda y derecha retroceden o avanzan; [ y ]
+cambian la velocidad; Retroceso vuelve a 1×; 9 y 0 cambian el volumen; m silencia;
+f y Esc controlan la pantalla completa; v muestra u oculta subtítulos y q cierra
 MPV. Estos atajos pueden variar si se personalizó la configuración de MPV.
 Después de cambiar la velocidad, el navegador escucha cambios del medio y
 reaplica la elegida si el sitio la restablece, con reintentos limitados y sin

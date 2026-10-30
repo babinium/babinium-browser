@@ -289,15 +289,15 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_label_set_xalign(GTK_LABEL(mpv_heading),0);gtk_box_pack_start(GTK_BOX(body),mpv_heading,FALSE,FALSE,0);
     GtkWidget *mpv_grid=gtk_grid_new();gtk_grid_set_column_spacing(GTK_GRID(mpv_grid),24);gtk_grid_set_row_spacing(GTK_GRID(mpv_grid),10);
     static const char *mpv_rows[][2]={
-        {"Espacio / P","Pausar o continuar"},
+        {"Espacio / p","Pausar o continuar"},
         {"← / →","Retroceder / avanzar 5 segundos"},
         {"[ / ]","Reducir / aumentar la velocidad un 10 %"},
         {"Retroceso","Volver a la velocidad normal (1×)"},
         {"9 / 0","Bajar / subir el volumen"},
-        {"M","Silenciar o activar el sonido"},
-        {"F / Esc","Pantalla completa / salir de pantalla completa"},
-        {"V","Mostrar u ocultar subtítulos"},
-        {"Q","Cerrar MPV"}
+        {"m","Silenciar o activar el sonido"},
+        {"f / Esc","Pantalla completa / salir de pantalla completa"},
+        {"v","Mostrar u ocultar subtítulos"},
+        {"q","Cerrar MPV"}
     };
     for(guint i=0;i<G_N_ELEMENTS(mpv_rows);i++){
         GtkWidget *key=gtk_label_new(mpv_rows[i][0]),*description=gtk_label_new(mpv_rows[i][1]);
