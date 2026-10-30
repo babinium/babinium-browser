@@ -44,7 +44,9 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
   usa otro idioma, se mantiene su comportamiento normal.
 - [x] En videos de YouTube, ofrecer «Abrir MPV» y permitir que MPV continúe
   reproduciendo después de cerrar Babinium, sin limitar la resolución por
-  modelo de equipo. Comprobar la reproducción real y sus dependencias.
+  modelo de equipo. Se comprobó con dos videos reales. La versión de yt-dlp de
+  Debian 13 de abril de 2025 falló con uno de ellos; la de trixie-backports de
+  octubre de 2026 funcionó y se documentó cómo actualizarla.
 - [x] Investigar y reducir cuando sea posible el consumo de CPU en Infobae y
   YouTube, midiendo sin quitar por defecto las funciones solicitadas.
 - [x] Evaluar si un control de JavaScript por sitio merece incorporarse, tras

@@ -2,9 +2,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Exercise the real YouTube button on the visible desktop with an isolated profile.
 
-The first run records the launch arguments; the second runs the installed MPV,
-muted and limited to 720p only for this test, and checks playback after closing
-the browser. The real user's profile and existing MPV processes are untouched.
+The first run records the launch arguments; the second runs the installed MPV
+with its normal configuration and quality, muted for this test, and checks
+playback after closing the browser. The real user's browser profile and existing
+MPV processes are untouched.
 """
 import json
 import os
@@ -23,8 +24,8 @@ from ui import browser_window, key
 binary = Path(sys.argv[1]).resolve()
 output = Path(sys.argv[2]).resolve()
 output.mkdir(parents=True, exist_ok=True)
-source = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&utm_source=babinium-test'
-canonical = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+source = os.environ.get('BB_MPV_TEST_URL', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&utm_source=babinium-test')
+canonical = os.environ.get('BB_MPV_TEST_CANONICAL', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ')
 
 
 def property_value(path, name):
@@ -64,8 +65,7 @@ for mode in os.environ.get('BB_MPV_TEST_MODES', 'fake,real').split(','):
         if mode == 'fake':
             code.append('time.sleep(120)')
         else:
-            code.append(f'os.execv("/usr/bin/mpv",["/usr/bin/mpv","--no-config","--mute=yes",'
-                        f'"--ytdl-format=bestvideo[height<=720]+bestaudio/best[height<=720]/best",'
+            code.append(f'os.execv("/usr/bin/mpv",["/usr/bin/mpv","--mute=yes",'
                         f'{("--input-ipc-server=" + str(ipc))!r},'
                         f'{("--log-file=" + str(output / "real-mpv.log"))!r}]+sys.argv[1:])')
         wrapper.write_text('\n'.join(code) + '\n')

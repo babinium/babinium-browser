@@ -50,8 +50,19 @@ sin instalar. Para el bundle se necesitan las dependencias de ejecución del paq
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.4.5_amd64.deb
+sudo apt install ./babinium-browser_0.4.6_amd64.deb
 ```
+
+«Abrir MPV» necesita una versión reciente de `yt-dlp`: la versión de abril de
+2025 de Debian 13 falló con un video real de YouTube, mientras que la de
+trixie-backports 2026.10.21 funcionó en esa prueba. El paquete recomienda esta
+última o una más reciente, sin obligar a instalar MPV para usar el navegador.
+Después de activar el repositorio oficial siguiendo las [instrucciones de Debian
+Backports](https://backports.debian.org/Instructions/), se puede actualizar solo
+el extractor con `sudo apt update` y `sudo apt install yt-dlp/trixie-backports`.
+YouTube cambia con el tiempo, por lo que ninguna versión garantiza reproducir
+todos los videos; MPV no recibe automáticamente la sesión de Babinium. Algunos
+videos pueden requerir además la [configuración de JavaScript de yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/EJS).
 
 Perfil predeterminado: `~/.local/share/babinium-browser`. `--profile DIR` permite
 perfiles de prueba independientes. No abrir simultáneamente dos instancias sobre

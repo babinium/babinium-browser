@@ -182,7 +182,7 @@ static void mpv_finished(GObject *object,GAsyncResult *result,gpointer data){
         GtkWidget *w=GTK_WIDGET(g_weak_ref_get(parent));
         if(w&&!gtk_widget_in_destruction(w)){
             GtkWidget *dialog=gtk_message_dialog_new(GTK_WINDOW(w),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_CLOSE,
-                "%s","MPV no pudo reproducir el video. Revisá tu conexión y que yt-dlp esté instalado y actualizado.");
+                "%s","MPV no pudo reproducir el video. Revisá tu conexión, si el video requiere iniciar sesión y que yt-dlp esté actualizado. En Debian 13, podés actualizar yt-dlp desde trixie-backports.");
             gtk_dialog_run(GTK_DIALOG(dialog));gtk_widget_destroy(dialog);
         }
         if(w)g_object_unref(w);
@@ -248,7 +248,7 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_box_pack_start(GTK_BOX(body),grid,FALSE,FALSE,0);
     GtkWidget *note=gtk_label_new("Los atajos controlan el video o audio activo y no se aplican mientras escribís.\nSi el reproductor está incrustado, hacé clic en él para darle el foco.\nAlgunos reproductores o contenidos pueden limitar la velocidad.");
     gtk_label_set_line_wrap(GTK_LABEL(note),TRUE);gtk_label_set_xalign(GTK_LABEL(note),0);gtk_box_pack_start(GTK_BOX(body),note,FALSE,FALSE,0);
-    GtkWidget *mpv_note=gtk_label_new("En un video de YouTube, «Abrir MPV» lo abre en una ventana independiente.\nPara reproducirlo se necesitan MPV y yt-dlp.");
+    GtkWidget *mpv_note=gtk_label_new("En un video de YouTube, «Abrir MPV» lo abre en una ventana independiente.\nSe necesitan MPV y yt-dlp actualizado; en Debian 13 está disponible en trixie-backports.");
     gtk_label_set_line_wrap(GTK_LABEL(mpv_note),TRUE);gtk_label_set_xalign(GTK_LABEL(mpv_note),0);gtk_box_pack_start(GTK_BOX(body),mpv_note,FALSE,FALSE,0);
     GtkWidget *animation_toggle=gtk_check_button_new_with_label("Pausar animaciones lejanas para reducir el uso de CPU");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(animation_toggle),suspend_animations);
@@ -442,7 +442,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.5");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.6");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);

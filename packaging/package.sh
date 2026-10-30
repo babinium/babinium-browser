@@ -11,17 +11,17 @@ cp LICENSE THIRD_PARTY.md README.md "$stage/usr/share/doc/babinium-browser/"
 cp build/share/babinium-browser/THIRD_PARTY_NOTICES.txt "$stage/usr/share/doc/babinium-browser/"
 cat > "$stage/DEBIAN/control" <<'EOF'
 Package: babinium-browser
-Version: 0.4.5
+Version: 0.4.6
 Architecture: amd64
 Maintainer: babinium <miguel_babini@outlook.com>
 Section: web
 Priority: optional
 Depends: libc6 (>= 2.41), libgtk-3-0t64 (>= 3.24), libwebkit2gtk-4.1-0 (>= 2.48), libjavascriptcoregtk-4.1-0, libjson-glib-1.0-0, libsoup-3.0-0, python3, ca-certificates, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-gl, gstreamer1.0-pulseaudio, gstreamer1.0-libav
-Recommends: mpv, yt-dlp
+Recommends: mpv, yt-dlp (>= 2026.10.21)
 Homepage: https://github.com/babinium/babinium-browser
 Description: Experimental minimal WebKitGTK browser with native adblock-rust
  C/GTK shell, tabs, downloads, native request blocking, cosmetic filtering,
  scriptlets and automatically updated lists. YouTube compatibility is experimental.
 EOF
-dpkg-deb --root-owner-group --build "$stage" artifacts/babinium-browser_0.4.5_amd64.deb
+dpkg-deb --root-owner-group --build "$stage" artifacts/babinium-browser_0.4.6_amd64.deb
 tar -czf artifacts/upstream-sources.tar.gz -C build/upstream ubo.tar.gz brave.tar.gz darkreader.tar.gz
