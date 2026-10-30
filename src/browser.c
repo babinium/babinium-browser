@@ -8,9 +8,10 @@
 #include <string.h>
 #include <unistd.h>
 #include "site-name.h"
+#include "youtube-url.h"
 
-typedef struct Tab { GtkWidget *view,*label,*box,*placeholder,*help; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
-static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*dark_button,*favorite_button,*favorites_box,*favorites_pop,*favorites_scroll,*downloads_box,*downloads_pop,*list_status;
+typedef struct Tab { GtkWidget *view,*label,*box,*placeholder,*help; char *youtube_url; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
+static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*dark_button,*favorite_button,*favorites_box,*favorites_pop,*favorites_scroll,*downloads_box,*downloads_pop,*list_status,*mpv_button;
 static WebKitWebContext *context;
 static WebKitUserContentManager *content;
 static GHashTable *disabled,*light_sites;
@@ -52,6 +53,7 @@ static gboolean bookmarkable(const char *uri){return uri&&(g_str_has_prefix(uri,
 static gboolean favorite_has(const char *uri){if(!bookmarkable(uri))return FALSE;char *id=favorite_id(uri);gboolean found=g_key_file_has_group(favorites,id);g_free(id);return found;}
 static void refresh_extra(Tab *t){
     const char *uri=t&&t->view?webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)):NULL;char *h=host_of(uri);
+    gtk_widget_set_visible(mpv_button,t&&t->youtube_url!=NULL);
     gtk_widget_set_sensitive(favorite_button,bookmarkable(uri));gtk_button_set_label(GTK_BUTTON(favorite_button),favorite_has(uri)?"★":"☆");
     gtk_widget_set_tooltip_text(favorite_button,favorite_has(uri)?"Quitar de favoritos (Ctrl+D)":"Guardar en favoritos (Ctrl+D)");
     gtk_widget_set_sensitive(dark_button,*h!=0);setting_dark=TRUE;gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dark_button),!g_hash_table_contains(light_sites,h));setting_dark=FALSE;
@@ -91,6 +93,10 @@ static void go(Tab *t,const char *input) {
 static void entry_activate(GtkEntry *e,gpointer unused){(void)unused;Tab *t=current();if(t){go(t,gtk_entry_get_text(e));if(t->view)gtk_widget_grab_focus(t->view);}}
 static void title_changed(GObject *obj,GParamSpec *ps,Tab *t){(void)ps;const char *s=webkit_web_view_get_title(WEBKIT_WEB_VIEW(obj));gtk_label_set_text(GTK_LABEL(t->label),s?s:"Nueva pestaña");if(t==current())refresh_controls();}
 static void changed(GObject *obj,GParamSpec *ps,Tab *t){(void)obj;(void)ps;if(t==current())refresh_controls();}
+static void uri_changed(GObject *obj,GParamSpec *ps,Tab *t){
+    (void)ps;g_free(t->youtube_url);t->youtube_url=youtube_video_url(webkit_web_view_get_uri(WEBKIT_WEB_VIEW(obj)));
+    if(t==current())refresh_controls();
+}
 static void load_changed(WebKitWebView *v,WebKitLoadEvent event,Tab *t){
     if(event==WEBKIT_LOAD_STARTED)log_event("load_started",webkit_web_view_get_uri(v));
     if(event==WEBKIT_LOAD_COMMITTED)log_event("load_committed",webkit_web_view_get_uri(v));
@@ -115,7 +121,7 @@ static gboolean page_message(WebKitWebView *v,WebKitUserMessage *m,Tab *t){
 }
 static void close_tab(GtkWidget *button,Tab *t){
     (void)button;int n=gtk_notebook_page_num(GTK_NOTEBOOK(notebook),t->box);if(n<0)return;
-    g_ptr_array_remove(tabs,t);gtk_notebook_remove_page(GTK_NOTEBOOK(notebook),n);g_free(t);
+    g_ptr_array_remove(tabs,t);gtk_notebook_remove_page(GTK_NOTEBOOK(notebook),n);g_free(t->youtube_url);g_free(t);
     if(!tabs->len)gtk_widget_destroy(window);else refresh_controls();
 }
 static Tab *new_tab(const char *uri,gboolean select);
@@ -140,7 +146,7 @@ static void attach_view(Tab *t,WebKitWebView *related){
     webkit_settings_set_javascript_can_open_windows_automatically(s,FALSE);
     gtk_box_pack_start(GTK_BOX(t->box),t->view,TRUE,TRUE,0);
     g_signal_connect(t->view,"notify::title",G_CALLBACK(title_changed),t);
-    g_signal_connect(t->view,"notify::uri",G_CALLBACK(changed),t);
+    g_signal_connect(t->view,"notify::uri",G_CALLBACK(uri_changed),t);
     g_signal_connect(t->view,"notify::is-loading",G_CALLBACK(changed),t);
     g_signal_connect(t->view,"load-changed",G_CALLBACK(load_changed),t);
     g_signal_connect(t->view,"load-failed",G_CALLBACK(load_failed),t);
@@ -168,6 +174,30 @@ static Tab *new_tab(const char *uri,gboolean select){
 static void switch_page(GtkNotebook *n,GtkWidget *page,guint num,gpointer unused){(void)n;(void)page;(void)num;(void)unused;Tab *t=current();const char *uri=t&&t->view?webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)):NULL;gtk_entry_set_text(GTK_ENTRY(address),uri?uri:"");refresh_controls();}
 static void navigate(GtkButton *b,gpointer which){(void)b;Tab *t=current();if(!t||!t->view)return;WebKitWebView *v=WEBKIT_WEB_VIEW(t->view);switch(GPOINTER_TO_INT(which)){case 0:webkit_web_view_go_back(v);break;case 1:webkit_web_view_go_forward(v);break;default:if(webkit_web_view_is_loading(v))webkit_web_view_stop_loading(v);else webkit_web_view_reload(v);}}
 static void add_tab(GtkButton *b,gpointer unused){(void)b;(void)unused;new_tab("about:blank",TRUE);gtk_entry_set_text(GTK_ENTRY(address),"");gtk_widget_grab_focus(address);}
+static void mpv_child_setup(gpointer unused){(void)unused;setsid();}
+static void mpv_finished(GObject *object,GAsyncResult *result,gpointer data){
+    GWeakRef *parent=data;GError *error=NULL;GSubprocess *p=G_SUBPROCESS(object);
+    if(!g_subprocess_wait_check_finish(p,result,&error)&&g_subprocess_get_if_exited(p)){
+        GtkWidget *w=GTK_WIDGET(g_weak_ref_get(parent));
+        if(w&&!gtk_widget_in_destruction(w)){
+            GtkWidget *dialog=gtk_message_dialog_new(GTK_WINDOW(w),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_CLOSE,
+                "%s","MPV no pudo reproducir el video. Revisá tu conexión y que yt-dlp esté instalado y actualizado.");
+            gtk_dialog_run(GTK_DIALOG(dialog));gtk_widget_destroy(dialog);
+        }
+        if(w)g_object_unref(w);
+    }
+    g_clear_error(&error);g_weak_ref_clear(parent);g_free(parent);
+}
+static void open_mpv(GtkButton *button,gpointer unused){
+    (void)button;(void)unused;Tab *t=current();if(!t||!t->youtube_url)return;
+    const char *argv[]={"mpv","--force-window=immediate","--no-terminal","--",t->youtube_url,NULL};
+    GSubprocessLauncher *launcher=g_subprocess_launcher_new(G_SUBPROCESS_FLAGS_STDOUT_SILENCE|G_SUBPROCESS_FLAGS_STDERR_SILENCE);
+    g_subprocess_launcher_set_child_setup(launcher,mpv_child_setup,NULL,NULL);
+    GError *error=NULL;GSubprocess *p=g_subprocess_launcher_spawnv(launcher,argv,&error);g_object_unref(launcher);
+    if(!p){file_error("No se pudo iniciar MPV; verificá que esté instalado",error);g_clear_error(&error);return;}
+    GWeakRef *parent=g_new0(GWeakRef,1);g_weak_ref_init(parent,G_OBJECT(window));
+    g_subprocess_wait_check_async(p,NULL,mpv_finished,parent);g_object_unref(p);
+}
 static void open_help(GtkButton *button,gpointer unused){
     (void)button;(void)unused;
     Tab *t=new_tab(NULL,TRUE);if(t->placeholder){gtk_widget_destroy(t->placeholder);t->placeholder=NULL;}
@@ -196,6 +226,8 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_box_pack_start(GTK_BOX(body),grid,FALSE,FALSE,0);
     GtkWidget *note=gtk_label_new("Los atajos controlan el video o audio activo y no se aplican mientras escribís.\nSi el reproductor está incrustado, hacé clic en él para darle el foco.\nAlgunos reproductores o contenidos pueden limitar la velocidad.");
     gtk_label_set_line_wrap(GTK_LABEL(note),TRUE);gtk_label_set_xalign(GTK_LABEL(note),0);gtk_box_pack_start(GTK_BOX(body),note,FALSE,FALSE,0);
+    GtkWidget *mpv_note=gtk_label_new("En un video de YouTube, «Abrir MPV» lo abre en una ventana independiente.\nPara reproducirlo se necesitan MPV y yt-dlp.");
+    gtk_label_set_line_wrap(GTK_LABEL(mpv_note),TRUE);gtk_label_set_xalign(GTK_LABEL(mpv_note),0);gtk_box_pack_start(GTK_BOX(body),mpv_note,FALSE,FALSE,0);
     gtk_container_add(GTK_CONTAINER(t->help),body);gtk_box_pack_start(GTK_BOX(t->box),t->help,TRUE,TRUE,0);
     gtk_label_set_text(GTK_LABEL(t->label),"Ayuda de Babinium");gtk_widget_show_all(t->help);refresh_controls();
 }
@@ -399,6 +431,7 @@ int main(int argc,char **argv){
     root=gtk_box_new(GTK_ORIENTATION_VERTICAL,0);gtk_container_add(GTK_CONTAINER(window),root);toolbar=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,3);gtk_container_set_border_width(GTK_CONTAINER(toolbar),4);gtk_box_pack_start(GTK_BOX(root),toolbar,FALSE,FALSE,0);
     back=button("Atrás",G_CALLBACK(navigate),GINT_TO_POINTER(0));forward=button("Adelante",G_CALLBACK(navigate),GINT_TO_POINTER(1));reload_btn=button("Recargar",G_CALLBACK(navigate),GINT_TO_POINTER(2));
     address=gtk_entry_new();gtk_entry_set_placeholder_text(GTK_ENTRY(address),"Dirección o búsqueda");gtk_box_pack_start(GTK_BOX(toolbar),address,TRUE,TRUE,0);g_signal_connect(address,"activate",G_CALLBACK(entry_activate),NULL);
+    mpv_button=button("Abrir MPV",G_CALLBACK(open_mpv),NULL);gtk_widget_set_no_show_all(mpv_button,TRUE);gtk_widget_set_tooltip_text(mpv_button,"Abrir este video de YouTube en MPV");
     favorite_button=button("☆",G_CALLBACK(toggle_favorite),NULL);
     GtkWidget *fm=gtk_menu_button_new();gtk_button_set_label(GTK_BUTTON(fm),"Favoritos");gtk_box_pack_start(GTK_BOX(toolbar),fm,FALSE,FALSE,0);favorites_pop=gtk_popover_new(fm);
     favorites_scroll=gtk_scrolled_window_new(NULL,NULL);gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(favorites_scroll),GTK_POLICY_NEVER,GTK_POLICY_AUTOMATIC);gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(favorites_scroll),480);gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(favorites_scroll),TRUE);

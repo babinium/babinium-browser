@@ -42,6 +42,13 @@ estable; los resultados de consumo pertenecen a la máquina y pruebas indicadas.
   para reducir el trabajo gráfico, manteniendo el ajuste manual y su persistencia.
   Los menús reconocidos son inglés y español; si YouTube cambia la interfaz o
   usa otro idioma, se mantiene su comportamiento normal.
+- [ ] En videos de YouTube, ofrecer «Abrir MPV» y permitir que MPV continúe
+  reproduciendo después de cerrar Babinium, sin limitar la resolución por
+  modelo de equipo. Comprobar la reproducción real y sus dependencias.
+- [ ] Investigar y reducir cuando sea posible el consumo de CPU en Infobae y
+  YouTube, midiendo sin quitar por defecto las funciones solicitadas.
+- [ ] Evaluar si un control de JavaScript por sitio merece incorporarse, tras
+  medir consumo y compatibilidad en Infobae y YouTube.
 - [x] Conservar el control del usuario cuando abra el menú durante la
   configuración inicial; la versión 0.3.1 se probó con selección real de 720p.
 

@@ -17,6 +17,7 @@ Maintainer: babinium <miguel_babini@outlook.com>
 Section: web
 Priority: optional
 Depends: libc6 (>= 2.41), libgtk-3-0t64 (>= 3.24), libwebkit2gtk-4.1-0 (>= 2.48), libjavascriptcoregtk-4.1-0, libjson-glib-1.0-0, libsoup-3.0-0, python3, ca-certificates, gstreamer1.0-plugins-good, gstreamer1.0-plugins-bad, gstreamer1.0-gl, gstreamer1.0-pulseaudio, gstreamer1.0-libav
+Recommends: mpv, yt-dlp
 Homepage: https://github.com/babinium/babinium-browser
 Description: Experimental minimal WebKitGTK browser with native adblock-rust
  C/GTK shell, tabs, downloads, native request blocking, cosmetic filtering,

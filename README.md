@@ -22,6 +22,8 @@ pedidos y los puntos que todavía requieren pruebas.
 - Control integrado de velocidad para medios HTML5, con indicador y los atajos de
   [Video Speed Controller](https://github.com/igrigorik/videospeed). Al pulsar
   «Babinium» se abre una pestaña de ayuda GTK.
+- En videos de YouTube, «Abrir MPV» abre el video en un reproductor separado;
+  requiere MPV y yt-dlp y sigue funcionando si se cierra el navegador.
 - Modo oscuro predeterminado con la API local de Dark Reader; el botón Oscuro
   permite excluir un sitio. YouTube usa su propio tema oscuro cuando está
   disponible. Cuando el fondo y varios puntos visibles ya son oscuros se evita

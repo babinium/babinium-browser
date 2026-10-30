@@ -15,9 +15,9 @@ build/bin/babinium-filter: $(RUSTLIB)
 	mkdir -p $(@D)
 	cp blocker/target/release/babinium-filter $@
 
-build/bin/babinium-browser: src/browser.c src/site-name.c src/site-name.h
+build/bin/babinium-browser: src/browser.c src/site-name.c src/site-name.h src/youtube-url.c src/youtube-url.h
 	mkdir -p $(@D)
-	$(CC) $(CFLAGS) src/browser.c src/site-name.c -o $@ $$(pkg-config --cflags --libs $(UI_PKGS)) -Wl,--gc-sections
+	$(CC) $(CFLAGS) src/browser.c src/site-name.c src/youtube-url.c -o $@ $$(pkg-config --cflags --libs $(UI_PKGS)) -Wl,--gc-sections
 
 build/lib/babinium-browser/libbabinium-adblock.so: src/extension.c src/blocker.h $(RUSTLIB)
 	mkdir -p $(@D)
@@ -36,8 +36,13 @@ build/tests/test-site-name: tests/test-site-name.c src/site-name.c src/site-name
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) tests/test-site-name.c src/site-name.c -o $@ $$(pkg-config --cflags --libs gio-2.0 libsoup-3.0)
 
-test: all build/tests/test-site-name
+build/tests/test-youtube-url: tests/test-youtube-url.c src/youtube-url.c src/youtube-url.h
+	mkdir -p $(@D)
+	$(CC) $(CFLAGS) tests/test-youtube-url.c src/youtube-url.c -o $@ $$(pkg-config --cflags --libs glib-2.0)
+
+test: all build/tests/test-site-name build/tests/test-youtube-url
 	build/tests/test-site-name
+	build/tests/test-youtube-url
 	cd blocker && cargo test --release --locked
 	python3 -m unittest discover -s tests -p 'test_*.py' -v
 	node --test tests/test-youtube.js tests/test-ambient.js tests/test-video-speed.js tests/test-video-speed-youtube.js
