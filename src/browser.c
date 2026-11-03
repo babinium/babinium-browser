@@ -446,10 +446,14 @@ static void toggle_dark(GtkToggleButton *button,gpointer unused){
  * Leaving the mode reloads the original page. */
 static const char *READER_JS="(function(){"
 "if(document.documentElement.getAttribute('data-babinium-reader')==='1')return true;"
-"let root=document.querySelector('article')||document.querySelector('main')||document.querySelector('[role=main]');"
+"let root=null;"
+"for(const s of ['article','main','[role=main]','.post-content','.entry-content','.article-content','.article-body','.story-body','div[itemprop=articleBody]']){let e=document.querySelector(s);if(e&&e.textContent&&e.textContent.trim().length>=120){root=e;break;}}"
 "if(!root){let best=null,n=0;document.querySelectorAll('div,section').forEach(e=>{let t=0;e.querySelectorAll('p').forEach(p=>t+=p.textContent.length);if(t>n){n=t;best=e;}});root=best;}"
 "if(!root||!root.textContent||root.textContent.trim().length<120)return false;"
-"let title=(document.querySelector('h1')&&document.querySelector('h1').textContent.trim())||document.title||'';"
+"let title='';"
+"for(const m of document.querySelectorAll('meta[property],meta[name]')){let k=((m.getAttribute('property')||'')+' '+(m.getAttribute('name')||''));if(k.indexOf('og:title')>=0||k.indexOf('twitter:title')>=0){title=(m.content&&m.content.trim())||'';if(title)break;}}"
+"if(!title){let e=document.querySelector('h1');if(e){title=(e.textContent&&e.textContent.trim())||'';}}"
+"if(!title)title=document.title||'';"
 "let clone=root.cloneNode(true);"
 "clone.querySelectorAll('script,style,noscript,iframe,svg,nav,header,footer,aside,form,button,canvas,video,audio,object,embed,link').forEach(e=>e.remove());"
 "clone.querySelectorAll('*').forEach(e=>{[...e.attributes].forEach(a=>{if(a.name!=='src'&&a.name!=='alt'&&a.name!=='href'&&a.name!=='colspan'&&a.name!=='rowspan')e.removeAttribute(a.name);});});"
@@ -731,7 +735,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.15");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.16");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);
