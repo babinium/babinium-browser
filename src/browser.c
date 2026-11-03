@@ -180,6 +180,21 @@ static gboolean policy(WebKitWebView *v,WebKitPolicyDecision *d,WebKitPolicyDeci
             mpv_controller_play(GTK_WINDOW(window),target,mpv_resolution,mpv_subtitles,ext_dir);
             webkit_policy_decision_ignore(d);return TRUE;
         }
+        GUri *u=g_uri_parse(target,G_URI_FLAGS_PARSE_RELAXED,NULL);
+        const char *scheme=u?g_uri_get_scheme(u):NULL;
+        gboolean internal=FALSE;
+        if(scheme&&!g_ascii_strcasecmp(scheme,"bb-yt")){
+            const char *path=g_uri_get_path(u);
+            char *watch=g_strdup_printf("https://www.youtube.com/watch?v=%s",path&&path[0]=='/'?path+1:"");
+            char *canonical=youtube_video_url(watch);
+            g_free(watch);
+            if(canonical)mpv_controller_play(GTK_WINDOW(window),canonical,mpv_resolution,mpv_subtitles,ext_dir);
+            else log_event("bb_yt_bad",target);
+            g_free(canonical);
+            internal=TRUE;
+        }
+        if(u)g_uri_unref(u);
+        if(internal){webkit_policy_decision_ignore(d);return TRUE;}
     }
     if(type==WEBKIT_POLICY_DECISION_TYPE_RESPONSE&&!webkit_response_policy_decision_is_mime_type_supported(WEBKIT_RESPONSE_POLICY_DECISION(d))){webkit_policy_decision_download(d);return TRUE;}
     return FALSE;
@@ -695,21 +710,45 @@ static gboolean eval_timer(gpointer unused){(void)unused;Tab *t=current();char *
 static gboolean probe(gpointer unused){(void)unused;Tab *t=current();if(t&&t->view)webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(t->view),"JSON.stringify({url:location.href,title:document.title,ready:document.readyState,video:[...document.querySelectorAll('video')].map(v=>({time:v.currentTime,duration:v.duration,paused:v.paused,ready:v.readyState,width:v.videoWidth,height:v.videoHeight,frames:v.getVideoPlaybackQuality?.().totalVideoFrames,dropped:v.getVideoPlaybackQuality?.().droppedVideoFrames,error:v.error?.message})),codecs:document.getElementById('movie_player')?.getStatsForNerds?.()?.codecs,ad:!!document.querySelector('.ad-showing,.ad-interrupting'),error:document.querySelector('.ytp-error-content-wrap')?.innerText,playability:window.ytInitialPlayerResponse?.playabilityStatus?.status})",-1,NULL,NULL,NULL,eval_result,NULL);return G_SOURCE_CONTINUE;}
 static gboolean screenshot(gpointer unused){(void)unused;GdkWindow *gw=gtk_widget_get_window(window);int width=gtk_widget_get_allocated_width(window),height=gtk_widget_get_allocated_height(window);GdkPixbuf *p=gdk_pixbuf_get_from_window(gw,0,0,width,height);if(p){GError *e=NULL;gdk_pixbuf_save(p,opt_screenshot,"png",&e,NULL);log_event("screenshot",e?e->message:opt_screenshot);g_clear_error(&e);g_object_unref(p);}return G_SOURCE_REMOVE;}
 static GtkWidget *button(const char *label,GCallback cb,gpointer data){GtkWidget *b=gtk_button_new_with_label(label);g_signal_connect(b,"clicked",cb,data);gtk_box_pack_start(GTK_BOX(toolbar),b,FALSE,FALSE,0);return b;}
-/* Middle click (or Ctrl+click) on a link opens it in a new foreground tab.
- * The script runs at document start in every frame, calls window.open inside
- * the user gesture so WebKitGTK routes it through the "create" signal (the
- * same path as target=_blank links) and prevents the default middle-click
- * "paste and load". Only http/https links are handled. */
+/* Middle click opens a link in a new foreground tab (window.open inside the
+ * user gesture goes through the "create" signal, like target=_blank links).
+ * Ctrl+click on a YouTube VIDEO link plays it in MPV without leaving the
+ * current page: it navigates to the internal bb-yt scheme, which the policy
+ * handler intercepts, validates and ignores after starting MPV. Ctrl+click on
+ * other links behaves like a normal click. */
 static const char *MIDDLECLICK_JS="(function(){"
+"function ytid(u){"
+"try{"
+"let p=new URL(u,location.href),h=p.hostname.toLowerCase();"
+"let parts=h==='youtu.be'?p.pathname.split('/'):null;"
+"if(parts&&parts[1])return parts[1];"
+"if(h==='youtube.com'||h.endsWith('.youtube.com')||h==='youtube-nocookie.com'||h.endsWith('.youtube-nocookie.com')){"
+"if(p.pathname==='/watch'||p.pathname==='/watch/')return p.searchParams.get('v')||'';"
+"parts=p.pathname.split('/');"
+"if((parts[1]==='shorts'||parts[1]==='live'||parts[1]==='embed'||parts[1]==='v')&&parts[2])return parts[2];"
+"}"
+"}catch(_){}"
+"return '';"
+"}"
 "document.addEventListener('mousedown',function(e){"
-"let mid=e.button===1,ctrl=e.button===0&&e.ctrlKey;"
-"if(!mid&&!ctrl)return;"
+"if(e.button!==1)return;"
 "let a=e.target&&e.target.closest?e.target.closest('a[href]'):null;"
 "if(!a)return;"
 "let u=a.href||'';"
 "if(u.indexOf('http:')!==0&&u.indexOf('https:')!==0)return;"
 "e.preventDefault();e.stopPropagation();"
 "window.open(u);"
+"},true);"
+"document.addEventListener('click',function(e){"
+"if(!(e.button===0&&e.ctrlKey))return;"
+"let a=e.target&&e.target.closest?e.target.closest('a[href]'):null;"
+"if(!a)return;"
+"let u=a.href||'';"
+"if(u.indexOf('http:')!==0&&u.indexOf('https:')!==0)return;"
+"let id=ytid(u);"
+"if(!id)return;"
+"e.preventDefault();e.stopPropagation();"
+"location.href='bb-yt://video/'+encodeURIComponent(id);"
 "},true);})();";
 static void install_scripts(void){
     if(!content)return;
