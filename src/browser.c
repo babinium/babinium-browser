@@ -6,32 +6,42 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <glib/gstdio.h>
+#include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 #include "site-name.h"
 #include "youtube-url.h"
 #include "stream-url.h"
 #include "mpv-controller.h"
 
-typedef struct Tab { GtkWidget *view,*label,*box,*placeholder,*help; char *youtube_url,*last_auto_url; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen; } Tab;
-static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*dark_button,*favorite_button,*favorites_box,*favorites_pop,*favorites_scroll,*downloads_box,*downloads_pop,*list_status,*mpv_button;
+typedef struct Tab { GtkWidget *view,*label,*box,*placeholder,*help; char *youtube_url,*last_auto_url; guint64 checked,blocked,scripts; gboolean engine_ok,engine_seen,reader; } Tab;
+static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*dark_button,*reader_button,*favorite_button,*favorites_box,*favorites_pop,*favorites_scroll,*downloads_box,*downloads_pop,*list_status,*mpv_button;
 static WebKitWebContext *context;
 static WebKitUserContentManager *content;
-static GHashTable *disabled,*light_sites;
+static GHashTable *disabled,*light_sites,*no_images,*no_js;
 static GKeyFile *favorites;
 static GPtrArray *tabs;
-static char *profile,*data_dir,*ext_dir,*bin_dir,*index_path,*sites_path,*light_path,*favorites_path,*filters_dir,*animation_optout_path,*mpv_resolution_path,*mpv_subtitles_path;
+static char *profile,*data_dir,*ext_dir,*bin_dir,*index_path,*sites_path,*light_path,*favorites_path,*filters_dir,*animation_optout_path,*mpv_resolution_path,*mpv_subtitles_path,*noimages_path,*nojs_path,*compositing_path,*cachelimit_path;
 static char *opt_profile,*opt_data,*opt_telemetry,*opt_eval,*opt_screenshot;
 static int quit_after,eval_after=10,snapshot_after=15,probe_interval;
 static gboolean no_block,no_update,autoplay,audit,updating,setting_shield,setting_dark,favorites_readonly;
 static gboolean suspend_animations=TRUE,setting_animations,setting_mpv_resolution,setting_mpv_subtitles,mpv_subtitles;
 static const guint mpv_resolutions[]={144,240,360,480,720,1080};
 static guint mpv_resolution=720;
+static gint cache_limit_mb;
 static gint64 start_time;
 static FILE *telemetry;
 static guint mapped_once,frame_once;
 static void ensure_context(void);
 static void attach_view(Tab *t,WebKitWebView *related);
 static void install_scripts(void);
+static void rule_add_clicked(GtkButton *b,gpointer unused);
+static void site_rule_remove(GtkButton *b,gpointer unused);
+static void toggle_compositing(GtkToggleButton *button,gpointer unused);
+static void set_cache_limit(GtkComboBox *combo,gpointer unused);
+static void rules_rebuild(GtkWidget *box);
+static void file_error(const char *what,GError *err);
 static void toggle_favorite(GtkButton *button,gpointer unused);
 static void extension_init(WebKitWebContext *ctx,gpointer unused);
 static void extension_data(WebKitWebContext *ctx);
@@ -53,6 +63,37 @@ static char *host_of(const char *uri){GUri *u=g_uri_parse(uri?uri:"",G_URI_FLAGS
 static gboolean site_enabled(Tab *t){if(!t->view)return !no_block;char *h=host_of(webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)));gboolean yes=!no_block&&!g_hash_table_contains(disabled,h);g_free(h);return yes;}
 static char *hash_text(GHashTable *table){GString *s=g_string_new("");GHashTableIter it;gpointer key;g_hash_table_iter_init(&it,table);while(g_hash_table_iter_next(&it,&key,NULL)){g_string_append(s,key);g_string_append_c(s,'\n');}return g_string_free(s,FALSE);}
 static char *sites_text(void){return hash_text(disabled);}
+/* Site rules restrict images or JavaScript per domain, including subdomains. */
+static gboolean host_matches(const char *host,const char *rule){
+    if(!*host)return FALSE;
+    if(!g_ascii_strcasecmp(host,rule))return TRUE;
+    gsize h=strlen(host),r=strlen(rule);
+    return h>r&&host[h-r-1]=='.'&&!g_ascii_strcasecmp(host+h-r,rule);
+}
+static gboolean site_rule(const char *uri,GHashTable *table){
+    GUri *u=g_uri_parse(uri?uri:"",G_URI_FLAGS_PARSE_RELAXED,NULL);
+    const char *host=u&&g_uri_get_host(u)?g_uri_get_host(u):NULL;
+    gboolean yes=FALSE;
+    if(host&&*host){GHashTableIter it;gpointer key;g_hash_table_iter_init(&it,table);while(g_hash_table_iter_next(&it,&key,NULL))if(host_matches(host,(const char*)key)){yes=TRUE;break;}}
+    if(u)g_uri_unref(u);return yes;
+}
+static char *normalize_domain(const char *text){
+    char *tmp=g_strstrip(g_strdup(text?text:""));
+    if(!*tmp)return tmp;
+    char *out=NULL;
+    if(g_str_has_prefix(tmp,"http://")||g_str_has_prefix(tmp,"https://")||strchr(tmp,'/')){
+        GUri *u=g_uri_parse(tmp,G_URI_FLAGS_PARSE_RELAXED,NULL);
+        if(u&&g_uri_get_host(u)&&*g_uri_get_host(u))out=g_ascii_strdown(g_uri_get_host(u),-1);
+        if(u)g_uri_unref(u);
+    }
+    if(!out)out=g_ascii_strdown(tmp,-1);
+    g_free(tmp);return out;
+}
+static void save_site_list(const char *path,GHashTable *table){
+    char *text=hash_text(table);GError *err=NULL;
+    if(!g_file_set_contents(path,text,-1,&err)){file_error("No se pudo guardar la regla del sitio",err);g_clear_error(&err);}
+    g_free(text);
+}
 static void file_error(const char *what,GError *err){GtkWidget *dialog=gtk_message_dialog_new(GTK_WINDOW(window),GTK_DIALOG_MODAL,GTK_MESSAGE_ERROR,GTK_BUTTONS_CLOSE,"%s: %s",what,err?err->message:"error desconocido");gtk_dialog_run(GTK_DIALOG(dialog));gtk_widget_destroy(dialog);}
 static char *favorite_id(const char *uri){return g_compute_checksum_for_string(G_CHECKSUM_SHA256,uri,-1);}
 static gboolean bookmarkable(const char *uri){return uri&&(g_str_has_prefix(uri,"http://")||g_str_has_prefix(uri,"https://"));}
@@ -63,7 +104,9 @@ static void refresh_extra(Tab *t){
     gtk_widget_set_sensitive(favorite_button,bookmarkable(uri));gtk_button_set_label(GTK_BUTTON(favorite_button),favorite_has(uri)?"★":"☆");
     gtk_widget_set_tooltip_text(favorite_button,favorite_has(uri)?"Quitar de favoritos (Ctrl+D)":"Guardar en favoritos (Ctrl+D)");
     gtk_widget_set_sensitive(dark_button,*h!=0);setting_dark=TRUE;gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(dark_button),!g_hash_table_contains(light_sites,h));setting_dark=FALSE;
-    gtk_button_set_label(GTK_BUTTON(dark_button),g_hash_table_contains(light_sites,h)?"Claro":"Oscuro");g_free(h);
+    gtk_button_set_label(GTK_BUTTON(dark_button),g_hash_table_contains(light_sites,h)?"Claro":"Oscuro");
+    gtk_widget_set_sensitive(reader_button,bookmarkable(uri));gtk_button_set_label(GTK_BUTTON(reader_button),t->reader?"Página":"Lectura");
+    g_free(h);
 }
 static void sync_sites(void){char *text=sites_text();g_file_set_contents(sites_path,text,-1,NULL);for(guint i=0;i<tabs->len;i++){Tab *t=g_ptr_array_index(tabs,i);if(t->view)webkit_web_view_send_message_to_page(WEBKIT_WEB_VIEW(t->view),webkit_user_message_new("bb-settings",g_variant_new("(s)",text)),NULL,NULL,NULL);}g_free(text);if(context)extension_data(context);}
 static void refresh_controls(void) {
@@ -106,6 +149,9 @@ static void changed(GObject *obj,GParamSpec *ps,Tab *t){(void)obj;(void)ps;if(t=
 static void media_for_uri(WebKitWebView *v,const char *uri){
     WebKitSettings *settings=webkit_web_view_get_settings(v);gboolean enabled=!youtube_site_url(uri);
     if(webkit_settings_get_enable_media(settings)!=enabled)webkit_settings_set_enable_media(settings,enabled);
+    gboolean images=!site_rule(uri,no_images),js=!site_rule(uri,no_js);
+    if(webkit_settings_get_auto_load_images(settings)!=images)webkit_settings_set_auto_load_images(settings,images);
+    if(webkit_settings_get_enable_javascript(settings)!=js)webkit_settings_set_enable_javascript(settings,js);
 }
 static void uri_changed(GObject *obj,GParamSpec *ps,Tab *t){
     (void)ps;WebKitWebView *v=WEBKIT_WEB_VIEW(obj);const char *uri=webkit_web_view_get_uri(v);
@@ -119,7 +165,7 @@ static void uri_changed(GObject *obj,GParamSpec *ps,Tab *t){
     if(t==current())refresh_controls();
 }
 static void load_changed(WebKitWebView *v,WebKitLoadEvent event,Tab *t){
-    if(event==WEBKIT_LOAD_STARTED){media_for_uri(v,webkit_web_view_get_uri(v));log_event("load_started",webkit_web_view_get_uri(v));}
+    if(event==WEBKIT_LOAD_STARTED){t->reader=FALSE;media_for_uri(v,webkit_web_view_get_uri(v));log_event("load_started",webkit_web_view_get_uri(v));}
     if(event==WEBKIT_LOAD_COMMITTED){uri_changed(G_OBJECT(v),NULL,t);log_event("load_committed",webkit_web_view_get_uri(v));}
     if(event==WEBKIT_LOAD_FINISHED)log_event("load_finished",webkit_web_view_get_uri(v));
     if(t==current())refresh_controls();
@@ -340,6 +386,41 @@ static void open_help(GtkButton *button,gpointer unused){
     g_object_set_data(G_OBJECT(t->help),"bb-animation-toggle",animation_toggle);gtk_box_pack_start(GTK_BOX(body),animation_toggle,FALSE,FALSE,0);
     GtkWidget *animation_note=gtk_label_new("El cambio se aplica al recargar las páginas. Si alguna página funciona mal, desactivá esta opción y recargala.");
     gtk_label_set_line_wrap(GTK_LABEL(animation_note),TRUE);gtk_label_set_xalign(GTK_LABEL(animation_note),0);gtk_box_pack_start(GTK_BOX(body),animation_note,FALSE,FALSE,0);
+    GtkWidget *site_heading=gtk_label_new(NULL);gtk_label_set_markup(GTK_LABEL(site_heading),"<span size='large' weight='bold'>Rendimiento y sitios</span>");
+    gtk_label_set_xalign(GTK_LABEL(site_heading),0);gtk_box_pack_start(GTK_BOX(body),site_heading,FALSE,FALSE,0);
+    GtkWidget *rules_row=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,6);
+    GtkWidget *rule_entry=gtk_entry_new();gtk_entry_set_placeholder_text(GTK_ENTRY(rule_entry),"Dominio, ej. infobae.com");gtk_box_pack_start(GTK_BOX(rules_row),rule_entry,TRUE,TRUE,0);
+    GtkWidget *rule_img=gtk_check_button_new_with_label("Sin imágenes");gtk_box_pack_start(GTK_BOX(rules_row),rule_img,FALSE,FALSE,0);
+    GtkWidget *rule_js=gtk_check_button_new_with_label("Sin JavaScript");gtk_box_pack_start(GTK_BOX(rules_row),rule_js,FALSE,FALSE,0);
+    GtkWidget *rule_add=gtk_button_new_with_label("Agregar");gtk_box_pack_start(GTK_BOX(rules_row),rule_add,FALSE,FALSE,0);
+    GtkWidget *rules_scroll=gtk_scrolled_window_new(NULL,NULL);gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(rules_scroll),GTK_POLICY_NEVER,GTK_POLICY_AUTOMATIC);gtk_scrolled_window_set_max_content_height(GTK_SCROLLED_WINDOW(rules_scroll),180);gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(rules_scroll),TRUE);
+    GtkWidget *rules_box=gtk_box_new(GTK_ORIENTATION_VERTICAL,3);gtk_container_add(GTK_CONTAINER(rules_scroll),rules_box);
+    g_object_set_data(G_OBJECT(rule_add),"bb-entry",rule_entry);g_object_set_data(G_OBJECT(rule_add),"bb-img",rule_img);g_object_set_data(G_OBJECT(rule_add),"bb-js",rule_js);g_object_set_data(G_OBJECT(rule_add),"bb-list",rules_box);
+    g_signal_connect(rule_add,"clicked",G_CALLBACK(rule_add_clicked),NULL);
+    gtk_box_pack_start(GTK_BOX(body),rules_row,FALSE,FALSE,0);gtk_box_pack_start(GTK_BOX(body),rules_scroll,FALSE,FALSE,0);
+    rules_rebuild(rules_box);
+    GtkWidget *rules_note=gtk_label_new("Las reglas valen para el dominio y sus subdominios al cargar la página; si la pestaña actual coincide, se recarga sola. Las otras pestañas abiertas toman la regla al recargarse.");
+    gtk_label_set_line_wrap(GTK_LABEL(rules_note),TRUE);gtk_label_set_xalign(GTK_LABEL(rules_note),0);gtk_box_pack_start(GTK_BOX(body),rules_note,FALSE,FALSE,0);
+    GtkWidget *comp_toggle=gtk_check_button_new_with_label("Forzar compositing acelerado de páginas web (aplica al reiniciar el navegador)");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(comp_toggle),g_file_test(compositing_path,G_FILE_TEST_EXISTS));
+    g_signal_connect(comp_toggle,"toggled",G_CALLBACK(toggle_compositing),NULL);
+    gtk_box_pack_start(GTK_BOX(body),comp_toggle,FALSE,FALSE,0);
+    char *engine=g_strdup_printf("Motor: WebKitGTK %u.%u.%u",webkit_get_major_version(),webkit_get_minor_version(),webkit_get_micro_version());
+    GtkWidget *engine_label=gtk_label_new(engine);g_free(engine);
+    gtk_label_set_xalign(GTK_LABEL(engine_label),0);gtk_box_pack_start(GTK_BOX(body),engine_label,FALSE,FALSE,0);
+    GtkWidget *cache_row=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,10);
+    GtkWidget *cache_label=gtk_label_new("Límite de caché en disco:");gtk_box_pack_start(GTK_BOX(cache_row),cache_label,FALSE,FALSE,0);
+    GtkWidget *cache_combo=gtk_combo_box_text_new();
+    static const int cache_options[]={0,128,256,512,1024};
+    for(guint i=0;i<G_N_ELEMENTS(cache_options);i++){char *l=cache_options[i]?g_strdup_printf("%d MB",cache_options[i]):g_strdup("Sin límite");gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(cache_combo),l);g_free(l);}
+    int cache_active=0;for(guint i=0;i<G_N_ELEMENTS(cache_options);i++)if(cache_options[i]==cache_limit_mb)cache_active=(int)i;
+    gtk_combo_box_set_active(GTK_COMBO_BOX(cache_combo),cache_active);
+    g_signal_connect(cache_combo,"changed",G_CALLBACK(set_cache_limit),NULL);
+    gtk_box_pack_start(GTK_BOX(cache_row),cache_combo,FALSE,FALSE,0);gtk_box_pack_start(GTK_BOX(body),cache_row,FALSE,FALSE,0);
+    GtkWidget *cache_note=gtk_label_new("Al iniciar el navegador, si el caché supera el límite se borran primero los archivos más viejos. El límite se aplica en el próximo inicio.");
+    gtk_label_set_line_wrap(GTK_LABEL(cache_note),TRUE);gtk_label_set_xalign(GTK_LABEL(cache_note),0);gtk_box_pack_start(GTK_BOX(body),cache_note,FALSE,FALSE,0);
+    GtkWidget *reader_note=gtk_label_new("El modo lector se usa con el botón «Lectura» de la barra: muestra solo el título y el artículo de la página actual; pulsándolo de nuevo vuelve a la página original.");
+    gtk_label_set_line_wrap(GTK_LABEL(reader_note),TRUE);gtk_label_set_xalign(GTK_LABEL(reader_note),0);gtk_box_pack_start(GTK_BOX(body),reader_note,FALSE,FALSE,0);
     gtk_container_add(GTK_CONTAINER(t->help),body);gtk_box_pack_start(GTK_BOX(t->box),t->help,TRUE,TRUE,0);
     gtk_label_set_text(GTK_LABEL(t->label),"Ayuda de Babinium");gtk_widget_show_all(t->help);refresh_controls();
 }
@@ -360,6 +441,134 @@ static void toggle_dark(GtkToggleButton *button,gpointer unused){
         file_error("No se pudo guardar la preferencia de modo oscuro",err);g_clear_error(&err);
     }else{install_scripts();webkit_web_view_reload(WEBKIT_WEB_VIEW(t->view));}
     g_free(text);g_free(h);refresh_controls();
+}
+/* Reader mode: replace the current document with its title and main article.
+ * Leaving the mode reloads the original page. */
+static const char *READER_JS="(function(){"
+"if(document.documentElement.getAttribute('data-babinium-reader')==='1')return true;"
+"let root=document.querySelector('article')||document.querySelector('main')||document.querySelector('[role=main]');"
+"if(!root){let best=null,n=0;document.querySelectorAll('div,section').forEach(e=>{let t=0;e.querySelectorAll('p').forEach(p=>t+=p.textContent.length);if(t>n){n=t;best=e;}});root=best;}"
+"if(!root||!root.textContent||root.textContent.trim().length<120)return false;"
+"let title=(document.querySelector('h1')&&document.querySelector('h1').textContent.trim())||document.title||'';"
+"let clone=root.cloneNode(true);"
+"clone.querySelectorAll('script,style,noscript,iframe,svg,nav,header,footer,aside,form,button,canvas,video,audio,object,embed,link').forEach(e=>e.remove());"
+"clone.querySelectorAll('*').forEach(e=>{[...e.attributes].forEach(a=>{if(a.name!=='src'&&a.name!=='alt'&&a.name!=='href'&&a.name!=='colspan'&&a.name!=='rowspan')e.removeAttribute(a.name);});});"
+"let dark=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;"
+"document.head.textContent='';document.body.textContent='';"
+"let st=document.createElement('style');"
+"st.textContent='body{margin:0;background:'+(dark?'#0d0f13':'#ffffff')+';color:'+(dark?'#e6e6e6':'#17191f')+';}main{max-width:46em;margin:0 auto;padding:28px 18px;font:17px/1.7 Georgia,serif;word-wrap:break-word;}h1{font-size:1.45em;line-height:1.25;margin:0 0 .8em;}h2,h3{line-height:1.3;margin:1.2em 0 .5em;}p,li{margin:0 0 .9em;}img{max-width:100%;height:auto;display:block;margin:1em auto;}a{color:'+(dark?'#86b7ff':'#1558b0')+';}pre{overflow:auto;white-space:pre-wrap;}blockquote{margin:1em 0;padding-left:1em;border-left:3px solid '+(dark?'#555':'#bbb')+';}table{border-collapse:collapse;margin:1em 0;}td,th{border:1px solid '+(dark?'#555':'#bbb')+';padding:4px;}';"
+"document.head.appendChild(st);"
+"let main=document.createElement('main');"
+"let h1=document.createElement('h1');h1.textContent=title;main.appendChild(h1);"
+"while(clone.firstChild)main.appendChild(clone.firstChild);"
+"document.body.appendChild(main);"
+"document.documentElement.setAttribute('data-babinium-reader','1');"
+"return true;})();";
+static void reader_done(GObject *o,GAsyncResult *res,gpointer data){
+    Tab *t=data;GError *e=NULL;JSCValue *v=webkit_web_view_evaluate_javascript_finish(WEBKIT_WEB_VIEW(o),res,&e);
+    gboolean ok=v&&jsc_value_is_boolean(v)&&jsc_value_to_boolean(v);
+    if(t)t->reader=ok;
+    log_event(ok?"reader_on":"reader_unavailable",e?e->message:"");
+    g_clear_error(&e);if(v)g_object_unref(v);
+    refresh_controls();
+}
+static void toggle_reader(GtkButton *button,gpointer unused){
+    (void)button;(void)unused;Tab *t=current();if(!t||!t->view)return;
+    WebKitWebView *v=WEBKIT_WEB_VIEW(t->view);const char *uri=webkit_web_view_get_uri(v);
+    if(!bookmarkable(uri))return;
+    if(t->reader){t->reader=FALSE;webkit_web_view_reload(v);refresh_controls();return;}
+    webkit_web_view_evaluate_javascript(v,READER_JS,-1,NULL,NULL,NULL,reader_done,t);
+}
+static void toggle_compositing(GtkToggleButton *button,gpointer unused){
+    (void)button;(void)unused;GError *err=NULL;
+    if(gtk_toggle_button_get_active(button)){
+        if(!g_file_set_contents(compositing_path,"1\n",-1,&err)){file_error("No se pudo guardar la preferencia de compositing",err);g_clear_error(&err);}
+    }else g_unlink(compositing_path);
+    g_clear_error(&err);
+}
+static void set_cache_limit(GtkComboBox *combo,gpointer unused){
+    (void)unused;static const int options[]={0,128,256,512,1024};
+    int index=gtk_combo_box_get_active(combo);if(index<0||(guint)index>=G_N_ELEMENTS(options))return;
+    char *text=g_strdup_printf("%d\n",options[index]);GError *err=NULL;
+    if(!g_file_set_contents(cachelimit_path,text,-1,&err)){file_error("No se pudo guardar el límite de caché",err);g_clear_error(&err);}
+    else cache_limit_mb=options[index];
+    g_free(text);
+}
+static void site_rules_save(void){save_site_list(noimages_path,no_images);save_site_list(nojs_path,no_js);}
+static void site_rule_remove(GtkButton *b,gpointer unused){
+    (void)unused;char *domain=g_strdup(g_object_get_data(G_OBJECT(b),"domain"));
+    g_hash_table_remove(no_images,domain);g_hash_table_remove(no_js,domain);
+    site_rules_save();
+    GtkWidget *row=gtk_widget_get_parent(GTK_WIDGET(b));if(row)gtk_widget_destroy(row);
+    Tab *t=current();if(t&&t->view&&domain&&*domain){char *h=host_of(webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)));if(host_matches(h,domain))webkit_web_view_reload(WEBKIT_WEB_VIEW(t->view));g_free(h);}
+    g_free(domain);
+}
+static void rule_add_clicked(GtkButton *b,gpointer unused){
+    (void)unused;
+    GtkWidget *entry=g_object_get_data(G_OBJECT(b),"bb-entry"),*img=g_object_get_data(G_OBJECT(b),"bb-img"),*js=g_object_get_data(G_OBJECT(b),"bb-js"),*box=g_object_get_data(G_OBJECT(b),"bb-list");
+    if(!entry||!img||!js||!box)return;
+    char *domain=normalize_domain(gtk_entry_get_text(GTK_ENTRY(entry)));
+    if(!*domain){g_free(domain);return;}
+    gboolean bi=gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(img)),bj=gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(js));
+    if(bi)g_hash_table_add(no_images,g_strdup(domain));else g_hash_table_remove(no_images,domain);
+    if(bj)g_hash_table_add(no_js,g_strdup(domain));else g_hash_table_remove(no_js,domain);
+    site_rules_save();rules_rebuild(box);gtk_entry_set_text(GTK_ENTRY(entry),"");
+    Tab *t=current();if(t&&t->view){char *h=host_of(webkit_web_view_get_uri(WEBKIT_WEB_VIEW(t->view)));if(host_matches(h,domain))webkit_web_view_reload(WEBKIT_WEB_VIEW(t->view));g_free(h);}
+    g_free(domain);
+}
+static void rules_rebuild(GtkWidget *box){
+    GList *children=gtk_container_get_children(GTK_CONTAINER(box));for(GList *i=children;i;i=i->next)gtk_widget_destroy(GTK_WIDGET(i->data));g_list_free(children);
+    GHashTable *all=g_hash_table_new(g_str_hash,g_str_equal);
+    GHashTableIter it;gpointer key;g_hash_table_iter_init(&it,no_images);while(g_hash_table_iter_next(&it,&key,NULL))g_hash_table_add(all,key);
+    g_hash_table_iter_init(&it,no_js);while(g_hash_table_iter_next(&it,&key,NULL))g_hash_table_add(all,key);
+    GList *keys=g_hash_table_get_keys(all);keys=g_list_sort(keys,(GCompareFunc)g_strcmp0);
+    if(!keys)gtk_box_pack_start(GTK_BOX(box),gtk_label_new("Todavía no hay reglas de sitios"),FALSE,FALSE,0);
+    for(GList *i=keys;i;i=i->next){
+        const char *d=i->data;gboolean ni=g_hash_table_contains(no_images,d),nj=g_hash_table_contains(no_js,d);
+        char *desc=g_strdup_printf("%s — %s%s",d,ni?"sin imágenes":"",ni&&nj?" y ":"");
+        char *tail=g_strdup_printf("%s",nj?"sin JavaScript":"");
+        char *full=g_strconcat(desc,nj?tail:"",NULL);
+        GtkWidget *row=gtk_box_new(GTK_ORIENTATION_HORIZONTAL,6),*label=gtk_label_new(full),*remove=gtk_button_new_with_label("×");
+        gtk_label_set_xalign(GTK_LABEL(label),0);gtk_widget_set_hexpand(label,TRUE);
+        g_object_set_data_full(G_OBJECT(remove),"domain",g_strdup(d),g_free);
+        g_signal_connect(remove,"clicked",G_CALLBACK(site_rule_remove),NULL);
+        gtk_box_pack_start(GTK_BOX(row),label,TRUE,TRUE,0);gtk_box_pack_start(GTK_BOX(row),remove,FALSE,FALSE,0);
+        gtk_box_pack_start(GTK_BOX(box),row,FALSE,FALSE,0);
+        g_free(full);g_free(desc);g_free(tail);
+    }
+    g_list_free(keys);g_hash_table_unref(all);
+    gtk_widget_show_all(box);
+}
+/* Trim the WebKit disk cache to the configured limit, oldest files first. */
+typedef struct{char *path;goffset size;time_t mtime;} CacheFile;
+static void cache_file_free(CacheFile *f){g_free(f->path);g_free(f);}
+static void cache_scan(const char *dir,GList **out,goffset *total){
+    GDir *d=g_dir_open(dir,0,NULL);if(!d)return;
+    const char *name;
+    while((name=g_dir_read_name(d))){
+        char *path=g_build_filename(dir,name,NULL);
+        GStatBuf st;
+        if(g_stat(path,&st)==0){
+            if(S_ISDIR(st.st_mode))cache_scan(path,out,total);
+            else if(S_ISREG(st.st_mode)){
+                CacheFile *f=g_new(CacheFile,1);f->path=path;f->size=st.st_size;f->mtime=st.st_mtime;
+                *total+=f->size;*out=g_list_prepend(*out,f);path=NULL;
+            }
+        }
+        g_free(path);
+    }
+    g_dir_close(d);
+}
+static gint cache_cmp(gconstpointer a,gconstpointer b){time_t x=((const CacheFile*)a)->mtime,y=((const CacheFile*)b)->mtime;return x<y?-1:x>y?1:0;}
+static void cache_prune(const char *dir,gint limit_mb){
+    if(limit_mb<=0)return;
+    GList *files=NULL;goffset total=0;cache_scan(dir,&files,&total);
+    goffset limit=(goffset)limit_mb*1024*1024;
+    if(total>limit){
+        files=g_list_sort(files,cache_cmp);
+        for(GList *i=files;i&&total>limit;i=i->next){CacheFile *f=i->data;if(g_unlink(f->path)==0)total-=f->size;}
+    }
+    g_list_free_full(files,(GDestroyNotify)cache_file_free);
 }
 static gboolean save_favorites(const char *before){
     GError *err=NULL;if(favorites_readonly){g_key_file_load_from_data(favorites,before,-1,G_KEY_FILE_NONE,NULL);file_error("El archivo de favoritos no se puede leer y no será sobrescrito",NULL);return FALSE;}if(g_key_file_save_to_file(favorites,favorites_path,&err))return TRUE;
@@ -522,7 +731,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.14");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.15");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);
@@ -544,6 +753,15 @@ int main(int argc,char **argv){
     animation_optout_path=g_build_filename(profile,"normal-animations",NULL);suspend_animations=!g_file_test(animation_optout_path,G_FILE_TEST_EXISTS);
     disabled=g_hash_table_new_full(g_str_hash,g_str_equal,g_free,NULL);char *txt=NULL;if(g_file_get_contents(sites_path,&txt,NULL,NULL)){char **lines=g_strsplit(txt,"\n",-1);for(char **s=lines;*s;s++)if(**s)g_hash_table_add(disabled,g_strdup(*s));g_strfreev(lines);g_free(txt);}
     light_sites=g_hash_table_new_full(g_str_hash,g_str_equal,g_free,NULL);txt=NULL;if(g_file_get_contents(light_path,&txt,NULL,NULL)){char **lines=g_strsplit(txt,"\n",-1);for(char **s=lines;*s;s++)if(**s)g_hash_table_add(light_sites,g_strdup(*s));g_strfreev(lines);g_free(txt);}
+    noimages_path=g_build_filename(profile,"no-image-sites",NULL);nojs_path=g_build_filename(profile,"no-js-sites",NULL);
+    no_images=g_hash_table_new_full(g_str_hash,g_str_equal,g_free,NULL);txt=NULL;if(g_file_get_contents(noimages_path,&txt,NULL,NULL)){char **lines=g_strsplit(txt,"\n",-1);for(char **s=lines;*s;s++)if(**s)g_hash_table_add(no_images,g_strdup(*s));g_strfreev(lines);g_free(txt);}
+    no_js=g_hash_table_new_full(g_str_hash,g_str_equal,g_free,NULL);txt=NULL;if(g_file_get_contents(nojs_path,&txt,NULL,NULL)){char **lines=g_strsplit(txt,"\n",-1);for(char **s=lines;*s;s++)if(**s)g_hash_table_add(no_js,g_strdup(*s));g_strfreev(lines);g_free(txt);}
+    compositing_path=g_build_filename(profile,"force-compositing",NULL);
+    if(g_file_test(compositing_path,G_FILE_TEST_EXISTS))g_setenv("WEBKIT_FORCE_COMPOSITING_MODE","1",TRUE);
+    cachelimit_path=g_build_filename(profile,"cache-limit",NULL);
+    char *limit_text=NULL;
+    if(g_file_get_contents(cachelimit_path,&limit_text,NULL,NULL)){char *end=NULL;gint64 value=g_ascii_strtoll(g_strstrip(limit_text),&end,10);if(end!=limit_text&&!*end&&value>=0&&value<=4096)cache_limit_mb=(gint)value;g_free(limit_text);}
+    {char *cache_dir=g_build_filename(profile,"cache",NULL);cache_prune(cache_dir,cache_limit_mb);g_free(cache_dir);}
     favorites=g_key_file_new();GError *fav_error=NULL;if(!g_key_file_load_from_file(favorites,favorites_path,G_KEY_FILE_NONE,&fav_error)&&!g_error_matches(fav_error,G_FILE_ERROR,G_FILE_ERROR_NOENT)){favorites_readonly=TRUE;g_printerr("No se pudo leer favoritos: %s\n",fav_error->message);}g_clear_error(&fav_error);
     index_path=g_build_filename(filters_dir,"current","engine.bin",NULL);if(!g_file_test(index_path,G_FILE_TEST_IS_REGULAR)){g_free(index_path);index_path=g_build_filename(data_dir,"engine.bin",NULL);}
     char *respath=g_build_filename(data_dir,"resources.json",NULL);
@@ -561,6 +779,7 @@ int main(int argc,char **argv){
     favorites_box=gtk_box_new(GTK_ORIENTATION_VERTICAL,3);gtk_container_set_border_width(GTK_CONTAINER(favorites_box),8);gtk_container_add(GTK_CONTAINER(favorites_scroll),favorites_box);gtk_container_add(GTK_CONTAINER(favorites_pop),favorites_scroll);gtk_widget_show_all(favorites_scroll);gtk_menu_button_set_popover(GTK_MENU_BUTTON(fm),favorites_pop);g_signal_connect(favorites_pop,"show",G_CALLBACK(favorites_show),NULL);
     shield=gtk_toggle_button_new_with_label("Bloqueo");gtk_box_pack_start(GTK_BOX(toolbar),shield,FALSE,FALSE,0);g_signal_connect(shield,"toggled",G_CALLBACK(toggle_block),NULL);
     dark_button=gtk_toggle_button_new_with_label("Oscuro");gtk_widget_set_tooltip_text(dark_button,"Activar o desactivar el modo oscuro para este sitio. Se recarga la pestaña.");gtk_box_pack_start(GTK_BOX(toolbar),dark_button,FALSE,FALSE,0);g_signal_connect(dark_button,"toggled",G_CALLBACK(toggle_dark),NULL);
+    reader_button=button("Lectura",G_CALLBACK(toggle_reader),NULL);gtk_widget_set_tooltip_text(reader_button,"Modo lector: mostrar solo el título y el artículo de esta página. Pulsá de nuevo para volver a la página original.");
     GtkWidget *dl=gtk_menu_button_new();gtk_button_set_label(GTK_BUTTON(dl),"Descargas");gtk_box_pack_start(GTK_BOX(toolbar),dl,FALSE,FALSE,0);downloads_pop=gtk_popover_new(dl);downloads_box=gtk_box_new(GTK_ORIENTATION_VERTICAL,6);gtk_container_set_border_width(GTK_CONTAINER(downloads_box),10);gtk_container_add(GTK_CONTAINER(downloads_pop),downloads_box);list_status=gtk_label_new(no_update?"Listas incluidas · actualización desactivada en esta prueba":"Listas incluidas · actualización automática cada 6 h");gtk_label_set_line_wrap(GTK_LABEL(list_status),TRUE);gtk_box_pack_start(GTK_BOX(downloads_box),list_status,FALSE,FALSE,0);GtkWidget *u=gtk_button_new_with_label("Actualizar listas");gtk_box_pack_start(GTK_BOX(downloads_box),u,FALSE,FALSE,0);g_signal_connect(u,"clicked",G_CALLBACK(manual_update),NULL);gtk_widget_show_all(downloads_box);gtk_menu_button_set_popover(GTK_MENU_BUTTON(dl),downloads_pop);
     button("+",G_CALLBACK(add_tab),NULL);notebook=gtk_notebook_new();gtk_notebook_set_scrollable(GTK_NOTEBOOK(notebook),TRUE);GtkWidget *brand=gtk_button_new_with_label("Babinium ⚙");gtk_widget_set_name(brand,"bb-brand");gtk_widget_set_tooltip_text(brand,"Abrir ayuda y opciones de Babinium");g_signal_connect(brand,"clicked",G_CALLBACK(open_help),NULL);gtk_widget_show(brand);gtk_notebook_set_action_widget(GTK_NOTEBOOK(notebook),brand,GTK_PACK_END);gtk_box_pack_start(GTK_BOX(root),notebook,TRUE,TRUE,0);
     g_signal_connect_after(notebook,"switch-page",G_CALLBACK(switch_page),NULL);g_signal_connect(window,"destroy",G_CALLBACK(gtk_main_quit),NULL);g_signal_connect(window,"key-press-event",G_CALLBACK(key_press),NULL);g_signal_connect(window,"map-event",G_CALLBACK(mapped),NULL);g_signal_connect(window,"draw",G_CALLBACK(drawn),NULL);
