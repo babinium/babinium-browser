@@ -34,6 +34,10 @@ pedidos y los puntos que todavía requieren pruebas.
   cuando están disponibles. Los subtítulos son opcionales, están desactivados por
   defecto y la elección se guarda: se prefiere el español y, si falta, otro
   idioma disponible. Requiere MPV y yt-dlp.
+- Los enlaces a streams `.m3u8`, `.mpd` y `.m3u` (televisión en vivo y listas
+  IPTV) también se abren en la ventana de MPV, al pulsarlos o escribirlos en la
+  barra de direcciones. No cubre streams con DRM cifrado, que requieren el
+  módulo de descifrado integrado de Chromium o Firefox.
 - Para reducir CPU, las animaciones CSS infinitas muy alejadas de la pantalla
   se pausan y vuelven a moverse antes de entrar en la vista. La opción se puede
   desactivar desde la ayuda al pulsar «Babinium»; recargá luego la página.
