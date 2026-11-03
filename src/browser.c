@@ -19,6 +19,7 @@ typedef struct Tab { GtkWidget *view,*label,*box,*placeholder,*help; char *youtu
 static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*dark_button,*reader_button,*favorite_button,*favorites_box,*favorites_pop,*favorites_scroll,*downloads_box,*downloads_pop,*list_status,*mpv_button;
 static WebKitWebContext *context;
 static WebKitUserContentManager *content;
+static WebKitScriptWorld *click_world;
 static GHashTable *disabled,*light_sites,*no_images,*no_js;
 static GKeyFile *favorites;
 static GPtrArray *tabs;
@@ -700,6 +701,7 @@ static GtkWidget *button(const char *label,GCallback cb,gpointer data){GtkWidget
  * at document start in every frame and reports the link through the bbclick
  * message handler. */
 static const char *MIDDLECLICK_JS="(function(){"
+"document.documentElement.setAttribute('data-bb-mc','1');"
 "document.addEventListener('mousedown',function(e){"
 "let mid=e.button===1,ctrl=e.button===0&&e.ctrlKey;"
 "if(!mid&&!ctrl)return;"
@@ -735,7 +737,7 @@ static void install_scripts(void){
     if(speed_youtube_js){WebKitUserScript *u=webkit_user_script_new(speed_youtube_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,speed_youtube_uris,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
     if(speed_js){WebKitUserScript *u=webkit_user_script_new_for_world(speed_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,"babinium-speed",NULL,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
     if(suspend_animations&&animation_js){WebKitUserScript *u=webkit_user_script_new_for_world(animation_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,"babinium-animations",NULL,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
-    WebKitUserScript *mc=webkit_user_script_new(MIDDLECLICK_JS,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,NULL,NULL);webkit_user_content_manager_add_script(content,mc);webkit_user_script_unref(mc);
+    WebKitUserScript *mc=webkit_user_script_new_for_world(MIDDLECLICK_JS,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,"bbclick",NULL,NULL);webkit_user_content_manager_add_script(content,mc);webkit_user_script_unref(mc);
 }
 static void extension_data(WebKitWebContext *ctx){
     char *res=g_build_filename(data_dir,"resources.json",NULL),*js=g_build_filename(data_dir,"cosmetic.js",NULL),*sites=sites_text();
@@ -745,7 +747,8 @@ static void extension_init(WebKitWebContext *ctx,gpointer unused){(void)unused;w
 static void ensure_context(void){
     if(context)return;
     content=webkit_user_content_manager_new();install_scripts();
-    webkit_user_content_manager_register_script_message_handler(content,"bbclick");
+    click_world=webkit_script_world_new_with_name("bbclick");
+    webkit_user_content_manager_register_script_message_handler_in_world(content,click_world,"bbclick");
     g_signal_connect(content,"script-message-received::bbclick",G_CALLBACK(click_message),NULL);
     char *cache=g_build_filename(profile,"cache",NULL),*storage=g_build_filename(profile,"web-data",NULL);
     WebKitWebsiteDataManager *dm=webkit_website_data_manager_new("base-data-directory",storage,"base-cache-directory",cache,NULL);context=webkit_web_context_new_with_website_data_manager(dm);g_object_unref(dm);g_free(cache);g_free(storage);
