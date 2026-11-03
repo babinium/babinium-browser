@@ -62,12 +62,25 @@ sudo apt install ./babinium-browser_0.4.16_amd64.deb
 «Abrir MPV» necesita una versión reciente de `yt-dlp`: la versión de abril de
 2025 de Debian 13 falló con un video real de YouTube, mientras que la de
 trixie-backports 2026.10.21 funcionó en esa prueba. El paquete exige MPV,
-`gstreamer1.0-vaapi` y `yt-dlp` (≥ 2026.10.21) como dependencias obligatorias:
-sin trixie-backports activado, la instalación falla con un aviso de dependencia
-incumplida; activá el repositorio oficial siguiendo las [instrucciones de Debian
-Backports](https://backports.debian.org/Instructions/), instalá el extractor con
-`sudo apt update` y `sudo apt install yt-dlp/trixie-backports` y volvé a instalar
-el paquete.
+`gstreamer1.0-vaapi` y `yt-dlp` (≥ 2026.10.21) como dependencias obligatorias.
+
+**¿Qué es trixie-backports y por qué hace falta?** Debian estable congela las
+versiones de sus programas durante años; *backports* es un repositorio oficial
+de Debian donde el equipo recompila versiones nuevas de algunos programas para
+la versión estable. A la fecha de publicación, `yt-dlp` con soporte para el
+YouTube actual solo está ahí. **Cómo activarlo:**
+
+1. Agregá esta línea en `/etc/apt/sources.list` o en un archivo nuevo dentro de
+   `/etc/apt/sources.list.d/`:
+   `deb http://deb.debian.org/debian trixie-backports main`
+2. `sudo apt update`
+3. `sudo apt install yt-dlp/trixie-backports`
+4. Volvé a instalar el paquete de Babinium.
+
+Sin ese paso, la instalación del `.deb` falla con un aviso de dependencia
+incumplida: es intencional, porque con un `yt-dlp` viejo YouTube queda roto.
+Instrucciones completas en la [página de Debian
+Backports](https://backports.debian.org/Instructions/).
 YouTube cambia con el tiempo, por lo que ninguna versión garantiza reproducir
 todos los videos; MPV no recibe automáticamente la sesión de Babinium. Algunos
 videos pueden requerir además la [configuración de JavaScript de yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/EJS).
