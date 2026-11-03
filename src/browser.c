@@ -19,7 +19,6 @@ typedef struct Tab { GtkWidget *view,*label,*box,*placeholder,*help; char *youtu
 static GtkWidget *window,*root,*toolbar,*address,*notebook,*back,*forward,*reload_btn,*shield,*dark_button,*reader_button,*favorite_button,*favorites_box,*favorites_pop,*favorites_scroll,*downloads_box,*downloads_pop,*list_status,*mpv_button;
 static WebKitWebContext *context;
 static WebKitUserContentManager *content;
-static WebKitScriptWorld *click_world;
 static GHashTable *disabled,*light_sites,*no_images,*no_js;
 static GKeyFile *favorites;
 static GPtrArray *tabs;
@@ -747,8 +746,7 @@ static void extension_init(WebKitWebContext *ctx,gpointer unused){(void)unused;w
 static void ensure_context(void){
     if(context)return;
     content=webkit_user_content_manager_new();install_scripts();
-    click_world=webkit_script_world_new_with_name("bbclick");
-    webkit_user_content_manager_register_script_message_handler_in_world(content,click_world,"bbclick");
+    webkit_user_content_manager_register_script_message_handler_in_world(content,"bbclick","bbclick");
     g_signal_connect(content,"script-message-received::bbclick",G_CALLBACK(click_message),NULL);
     char *cache=g_build_filename(profile,"cache",NULL),*storage=g_build_filename(profile,"web-data",NULL);
     WebKitWebsiteDataManager *dm=webkit_website_data_manager_new("base-data-directory",storage,"base-cache-directory",cache,NULL);context=webkit_web_context_new_with_website_data_manager(dm);g_object_unref(dm);g_free(cache);g_free(storage);
