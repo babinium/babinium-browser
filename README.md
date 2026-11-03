@@ -30,9 +30,12 @@ descargas y la pestaña de ajustes («Babinium ⚙»).*
   década.
 - **Bloqueo de anuncios incluido, sin configurar nada.** La barra te muestra
   cuántas solicitudes de publicidad y rastreo bloqueó la pestaña.
-- **YouTube sin ahogar la PC.** El video se abre automáticamente en MPV, un
-  reproductor liviano aparte, y la página queda liviana. Con preferencia por
-  audio y subtítulos en español.
+- **YouTube sin ahogar la PC, y ahora sin abrir la página.** Los videos se
+  reproducen en MPV, un reproductor liviano aparte: la página de YouTube queda
+  liviana y tu máquina no carga con el video. Y con **Ctrl+clic sobre cualquier
+  video de YouTube el video arranca en MPV al instante, sin abrir ni recargar
+  la página**: buscá, hacé Ctrl+clic, mirá. Con preferencia por audio y
+  subtítulos en español.
 - **Modo lector con un clic.** El artículo queda solo, con letra cómoda y
   tamaño ajustable.
 - **Modo oscuro en todas las páginas**, con excepciones por sitio si algo
@@ -82,7 +85,9 @@ el mismo perfil. Descargas en la carpeta Descargas del usuario, sin sobrescribir
 Atajos: Ctrl+L dirección, Ctrl+T pestaña, Ctrl+W cerrar, Ctrl+Tab cambiar,
 Ctrl+1…9 seleccionar, Ctrl+R recargar, Ctrl+Shift+R sin caché, Alt+flechas navegar,
 Ctrl+B bloqueo por sitio, Ctrl+D guardar/quitar favorito, Ctrl+Shift+D favoritos,
-Ctrl+Shift+M modo oscuro por sitio, Ctrl+J descargas. El panel de descargas permite forzar
+Ctrl+Shift+M modo oscuro por sitio, Ctrl+J descargas. Con el mouse: clic con la
+ruedita abre el enlace en una pestaña nueva al frente y Ctrl+clic sobre un video
+de YouTube lo reproduce en MPV sin salir de la página. El panel de descargas permite forzar
 la actualización de listas. Cambiar el bloqueo recarga la pestaña; otras pestañas
 del mismo hostname aplican la decisión de red inmediatamente y necesitan recarga
 para retirar los scriptlets ya ejecutados.
@@ -140,6 +145,11 @@ todos los navegadores integrados.
   disponible (Sandy Bridge o más nuevo en Intel); si un stream no la soporta,
   MPV vuelve a decodificar por software. Con el paquete recomendado
   `gstreamer1.0-vaapi`, los videos incrustados en páginas también usan la GPU.
+- Los enlaces de la barra de direcciones y de las páginas tienen atajos de
+  mouse: **clic con la ruedita** abre el enlace en una pestaña nueva al frente
+  (YouTube, streams .m3u8/.mpd/.m3u o cualquier sitio), y **Ctrl+clic sobre un
+  video de YouTube lo reproduce en MPV sin salir de la página actual** (también
+  con shorts, directo y youtu.be); Ctrl+clic en otros enlaces navega normal.
 - Los enlaces a streams `.m3u8`, `.mpd` y `.m3u` (televisión en vivo y listas
   IPTV) también se abren en la ventana de MPV, al pulsarlos o escribirlos en la
   barra de direcciones. No cubre streams con DRM cifrado, que requieren el
