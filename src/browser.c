@@ -419,7 +419,7 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_box_pack_start(GTK_BOX(cache_row),cache_combo,FALSE,FALSE,0);gtk_box_pack_start(GTK_BOX(body),cache_row,FALSE,FALSE,0);
     GtkWidget *cache_note=gtk_label_new("Al iniciar el navegador, si el caché supera el límite se borran primero los archivos más viejos. El límite se aplica en el próximo inicio.");
     gtk_label_set_line_wrap(GTK_LABEL(cache_note),TRUE);gtk_label_set_xalign(GTK_LABEL(cache_note),0);gtk_box_pack_start(GTK_BOX(body),cache_note,FALSE,FALSE,0);
-    GtkWidget *reader_note=gtk_label_new("El modo lector se usa con el botón «Lectura» de la barra: muestra solo el título y el artículo de la página actual; pulsándolo de nuevo vuelve a la página original.");
+    GtkWidget *reader_note=gtk_label_new("El modo lector se usa con el botón «Lectura» de la barra: muestra solo el título y el artículo de la página actual. Para volver a la página original, pulsá «Lectura» de nuevo o la × del recuadro. El tamaño de letra se ajusta con los botones A- y A+ del recuadro o con las teclas - y + del teclado.");
     gtk_label_set_line_wrap(GTK_LABEL(reader_note),TRUE);gtk_label_set_xalign(GTK_LABEL(reader_note),0);gtk_box_pack_start(GTK_BOX(body),reader_note,FALSE,FALSE,0);
     gtk_container_add(GTK_CONTAINER(t->help),body);gtk_box_pack_start(GTK_BOX(t->box),t->help,TRUE,TRUE,0);
     gtk_label_set_text(GTK_LABEL(t->label),"Ayuda de Babinium");gtk_widget_show_all(t->help);refresh_controls();
@@ -467,6 +467,14 @@ static const char *READER_JS="(function(){"
 "while(clone.firstChild)main.appendChild(clone.firstChild);"
 "document.body.appendChild(main);"
 "document.documentElement.setAttribute('data-babinium-reader','1');"
+"let bar=document.createElement('div');"
+"bar.style.cssText='position:fixed;bottom:16px;right:16px;display:flex;gap:6px;align-items:center;background:'+(dark?'rgba(20,23,28,.92)':'rgba(251,249,244,.96)')+';border:1px solid '+(dark?'#39414d':'#e6e1d6')+';border-radius:22px;padding:6px 10px;z-index:2147483647;';"
+"window.__bbSize=18;"
+"let mk=function(t,f){let b=document.createElement('button');b.textContent=t;b.style.cssText='background:none;border:none;color:'+(dark?'#cfd4da':'#383d44')+';font:600 14px Georgia,Liberation Serif,serif;cursor:pointer;padding:2px 6px;';b.addEventListener('click',f);bar.appendChild(b);};"
+"mk('A-',function(){window.__bbSize=Math.max(12,window.__bbSize-1);main.style.fontSize=window.__bbSize+'px';});"
+"mk('A+',function(){window.__bbSize=Math.min(32,window.__bbSize+1);main.style.fontSize=window.__bbSize+'px';});"
+"mk('×',function(){location.reload();});"
+"document.body.appendChild(bar);"
 "return true;})();";
 static void reader_done(GObject *o,GAsyncResult *res,gpointer data){
     Tab *t=data;GError *e=NULL;JSCValue *v=webkit_web_view_evaluate_javascript_finish(WEBKIT_WEB_VIEW(o),res,&e);
@@ -671,6 +679,11 @@ static gboolean key_press(GtkWidget *w,GdkEventKey *e,gpointer unused){
     default:if(k>=GDK_KEY_1&&k<=GDK_KEY_9){gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),k==GDK_KEY_9?-1:(int)(k-GDK_KEY_1));return TRUE;}}}
     if((e->state&GDK_MOD1_MASK)&&k==GDK_KEY_Left){navigate(NULL,GINT_TO_POINTER(0));return TRUE;}
     if((e->state&GDK_MOD1_MASK)&&k==GDK_KEY_Right){navigate(NULL,GINT_TO_POINTER(1));return TRUE;}
+    if(t&&t->reader&&(k==GDK_KEY_plus||k==GDK_KEY_equal||k==GDK_KEY_minus||k==GDK_KEY_underscore)){
+        int d=(k==GDK_KEY_plus||k==GDK_KEY_equal)?1:-1;
+        char *s=g_strdup_printf("if(window.__bbSize){window.__bbSize=Math.max(12,Math.min(32,window.__bbSize%+d));let m=document.querySelector('main');if(m)m.style.fontSize=window.__bbSize+'px';}",d);
+        webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(t->view),s,-1,NULL,NULL,NULL,NULL,NULL);g_free(s);return TRUE;
+    }
     if(k==GDK_KEY_F5){navigate(NULL,GINT_TO_POINTER(2));return TRUE;}
     return FALSE;
 }
