@@ -61,11 +61,13 @@ sudo apt install ./babinium-browser_0.4.16_amd64.deb
 
 «Abrir MPV» necesita una versión reciente de `yt-dlp`: la versión de abril de
 2025 de Debian 13 falló con un video real de YouTube, mientras que la de
-trixie-backports 2026.10.21 funcionó en esa prueba. El paquete recomienda esta
-última o una más reciente, sin obligar a instalar MPV para usar el navegador.
-Después de activar el repositorio oficial siguiendo las [instrucciones de Debian
-Backports](https://backports.debian.org/Instructions/), se puede actualizar solo
-el extractor con `sudo apt update` y `sudo apt install yt-dlp/trixie-backports`.
+trixie-backports 2026.10.21 funcionó en esa prueba. El paquete exige MPV,
+`gstreamer1.0-vaapi` y `yt-dlp` (≥ 2026.10.21) como dependencias obligatorias:
+sin trixie-backports activado, la instalación falla con un aviso de dependencia
+incumplida; activá el repositorio oficial siguiendo las [instrucciones de Debian
+Backports](https://backports.debian.org/Instructions/), instalá el extractor con
+`sudo apt update` y `sudo apt install yt-dlp/trixie-backports` y volvé a instalar
+el paquete.
 YouTube cambia con el tiempo, por lo que ninguna versión garantiza reproducir
 todos los videos; MPV no recibe automáticamente la sesión de Babinium. Algunos
 videos pueden requerir además la [configuración de JavaScript de yt-dlp](https://github.com/yt-dlp/yt-dlp/wiki/EJS).
