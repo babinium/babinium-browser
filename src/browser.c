@@ -200,6 +200,22 @@ static void close_tab(GtkWidget *button,Tab *t){
     if(!tabs->len)gtk_widget_destroy(window);else refresh_controls();
 }
 static Tab *new_tab(const char *uri,gboolean select);
+/* Middle click (or Ctrl+click) on a link opens it in a new background tab,
+ * like mainstream browsers; returning TRUE also stops WebKitGTK's default
+ * middle-click "paste and load" behavior. */
+static gboolean view_button(GtkWidget *w,GdkEventButton *e,gpointer unused){
+    (void)unused;
+    gboolean middle=e->button==2&&e->type==GDK_BUTTON_PRESS;
+    gboolean ctrl_left=e->button==1&&e->type==GDK_BUTTON_PRESS&&(e->state&GDK_CONTROL_MASK);
+    if(!middle&&!ctrl_left)return FALSE;
+    WebKitHitTestResult *h=webkit_web_view_get_hit_test_result(WEBKIT_WEB_VIEW(w),e);
+    if(!h)return FALSE;
+    guint context=0;char *link=NULL;gboolean handled=FALSE;
+    g_object_get(h,"context",&context,"link-uri",&link,NULL);
+    if((context&WEBKIT_HIT_TEST_RESULT_CONTEXT_LINK)&&link&&*link){new_tab(link,FALSE);handled=TRUE;}
+    g_object_unref(h);g_free(link);
+    return handled;
+}
 static void popup_ready(WebKitWebView *v,Tab *t){gtk_widget_show(GTK_WIDGET(v));int n=gtk_notebook_page_num(GTK_NOTEBOOK(notebook),t->box);if(n>=0)gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook),n);}
 static WebKitWebView *create_view(WebKitWebView *v,WebKitNavigationAction *action,gpointer unused){(void)action;(void)unused;Tab *t=new_tab(NULL,FALSE);attach_view(t,v);gtk_widget_hide(t->view);g_signal_connect(t->view,"ready-to-show",G_CALLBACK(popup_ready),t);return WEBKIT_WEB_VIEW(t->view);}
 static void web_close(WebKitWebView *v,Tab *t){(void)v;close_tab(NULL,t);}
@@ -227,6 +243,7 @@ static void attach_view(Tab *t,WebKitWebView *related){
     g_signal_connect(t->view,"notify::uri",G_CALLBACK(uri_changed),t);
     g_signal_connect(t->view,"notify::is-loading",G_CALLBACK(changed),t);
     g_signal_connect(t->view,"load-changed",G_CALLBACK(load_changed),t);
+    g_signal_connect(t->view,"button-press-event",G_CALLBACK(view_button),NULL);
     g_signal_connect(t->view,"load-failed",G_CALLBACK(load_failed),t);
     g_signal_connect(t->view,"decide-policy",G_CALLBACK(policy),NULL);
     g_signal_connect(t->view,"user-message-received",G_CALLBACK(page_message),t);
@@ -748,7 +765,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.16");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.17");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);
