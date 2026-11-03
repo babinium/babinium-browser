@@ -1,77 +1,50 @@
 # Babinium Browser
 
-Prototipo de navegador libre para Debian 13, escrito en C/GTK 3, con WebKitGTK
-4.1 del sistema y bloqueo nativo mediante adblock-rust de Brave. Inspirado por
-la simplicidad de surf; la interfaz es nueva. Licencia GPL-3.0-o-posterior.
+<p align="center">
+  <img src="img/google.png" alt="Babinium Browser mostrando Google en modo oscuro, con el contador de bloqueo en la barra" width="820">
+</p>
 
-**Estado: experimental.** No se presenta como el navegador de menor consumo.
-En versiones anteriores se validaron reproducción real de YouTube, bloqueo de
-solicitudes publicitarias y modificación de datos del reproductor. La eliminación
-de preroll/midroll no quedó demostrada porque el control tampoco mostró anuncios
-de vídeo. Miguel informó que la apertura automática de MPV de la versión 0.4.7
-funciona; en 0.4.12 se verificaron nuevamente MPV, resolución, subtítulos y los
-nuevos controles de velocidad.
-Véanse los informes de [validación 0.4.12](docs/validation-0.4.12.md), [validación 0.4.5](docs/validation-0.4.5.md), [validación 0.4.4](docs/validation-0.4.4.md), [validación 0.4.3](docs/validation-0.4.3.md),
-[validación 0.4.2](docs/validation-0.4.2.md), [validación 0.3.1](docs/validation-0.3.1.md),
-[validación 0.3.0](docs/validation-0.3.md), [validación 0.2](docs/validation-0.2.md) y del
-[prototipo inicial 0.1](docs/validation.md).
-La [lista de requisitos y su estado](docs/REQUISITOS.md) conserva todos los
-pedidos y los puntos que todavía requieren pruebas.
+**Babinium es un navegador web liviano, pensado para computadoras viejas o de
+pocos recursos.** Arranca rápido, gasta poca memoria y trae bloqueo de anuncios
+de fábrica. Es un proyecto experimental, hecho a mano, gratuito y de licencia
+libre (GPL-3.0 o posterior). Funciona en Debian 13 (amd64).
 
-- Barra de direcciones con búsqueda Google, atrás/adelante, pestañas y descargas.
-- Pestañas vacías negras y «Babinium ⚙» en el extremo derecho de la barra.
-- Favoritos en el perfil, con estrella y panel amplio de títulos y nombres de
-  sitio; cookies y datos de sitios persistentes entre reinicios.
-- Control integrado de velocidad para medios HTML5 mediante { y }, con un
-  indicador temporal. Al pulsar
-  «Babinium» se abre una pestaña de ayuda GTK.
-- Al abrir un video de YouTube, Babinium mantiene la página abierta, deshabilita
-  su reproducción y abre el video automáticamente en MPV. Otro video reemplaza
-  al anterior en el mismo MPV. «Abrir MPV» permite volver a abrir el video tras
-  cerrar el reproductor; MPV puede seguir funcionando al cerrar el navegador.
-  La resolución se elige entre 144p y 1080p en la pestaña «Babinium»; el valor
-  inicial es 720p y la elección se guarda. Prefiere H.264 y audio en español
-  cuando están disponibles. Los subtítulos son opcionales, están desactivados por
-  defecto y la elección se guarda: se prefiere el español y, si falta, otro
-  idioma disponible. Requiere MPV y yt-dlp.
-- La decodificación de video en MPV usa la GPU con VA-API cuando está
-  disponible (Sandy Bridge o más nuevo en Intel); si un stream no la soporta,
-  MPV vuelve a decodificar por software. Con el paquete recomendado
-  `gstreamer1.0-vaapi`, los videos incrustados en páginas también usan la GPU.
-- Los enlaces a streams `.m3u8`, `.mpd` y `.m3u` (televisión en vivo y listas
-  IPTV) también se abren en la ventana de MPV, al pulsarlos o escribirlos en la
-  barra de direcciones. No cubre streams con DRM cifrado, que requieren el
-  módulo de descifrado integrado de Chromium o Firefox.
-- La pestaña de ayuda («Babinium ⚙») incluye ajustes para equipos moderados:
-  reglas por dominio para cargar sin imágenes o sin JavaScript (con recarga de
-  la pestaña al aplicar), límite de caché en disco con recorte de los archivos
-  más viejos al iniciar, y la opción de forzar el compositing acelerado.
-  El motor en uso se muestra en esa misma sección.
-- El botón «Lectura» de la barra activa el modo lector: muestra solo el título
-  y el artículo de la página actual, con letra serif cómoda, paleta clara u
-  oscura según el sistema y detección del contenido que incluye los selectores
-  habituales de los CMS de noticias y el título de las meta-tags. El tamaño de
-  letra se ajusta con los botones A- y A+ del recuadro flotante o con las
-  teclas - y +; para volver a la página original, el mismo botón o la × del
-  recuadro.
-- Para reducir CPU, las animaciones CSS infinitas muy alejadas de la pantalla
-  se pausan y vuelven a moverse antes de entrar en la vista. La opción se puede
-  desactivar desde la ayuda al pulsar «Babinium»; recargá luego la página.
-- Modo oscuro predeterminado con la API local de Dark Reader; el botón Oscuro
-  permite excluir un sitio. YouTube usa su propio tema oscuro cuando está
-  disponible. Cuando el fondo y varios puntos visibles ya son oscuros se evita
-  transformar la página; es una heurística inicial, no detección perfecta. La
-  integración API no incluye todas las correcciones de la extensión de
-  escritorio y respeta las restricciones CORS de la página.
-- Bloqueo de solicitudes, CSS específico y genérico, scriptlets uBO/Brave.
-- Bloqueo activado por defecto y excepciones por hostname exacto con Ctrl+B.
-- EasyList, EasyPrivacy y filtros de uAssets incluidos; actualizaciones HTTPS
-  en segundo plano, con validación y cambio atómico. Un fallo conserva la versión
-  anterior. Sin servicio residente para actualizar ni intérprete para navegar.
-- Sandbox multiproceso de WebKit habilitado, TLS del sistema y cookies sin
-  terceros. El motor se actualiza con las actualizaciones de seguridad de Debian.
+## Capturas
 
-## Ejecutar
+![Google en modo oscuro dentro de Babinium](img/google.png)
+*Google en modo oscuro: el botón «Bloqueo · 12» muestra las solicitudes de
+publicidad y rastreo que bloqueó la pestaña.*
+
+![YouTube dentro de Babinium](img/youtube.png)
+*YouTube: la página queda liviana y el video se abre solo en MPV, fuera del
+navegador, sin ahogar la computadora.*
+
+![La barra de Babinium](img/inicio.png)
+*La interfaz completa: pestañas, favoritos, bloqueo, modo oscuro, modo lector,
+descargas y la pestaña de ajustes («Babinium ⚙»).*
+
+## ¿Qué lo hace distinto?
+
+- **Liviano de verdad.** Una pestaña vacía ocupa unos 45 MB y la interfaz
+  aparece en menos de un segundo, incluso en computadoras de hace más de una
+  década.
+- **Bloqueo de anuncios incluido, sin configurar nada.** La barra te muestra
+  cuántas solicitudes de publicidad y rastreo bloqueó la pestaña.
+- **YouTube sin ahogar la PC.** El video se abre automáticamente en MPV, un
+  reproductor liviano aparte, y la página queda liviana. Con preferencia por
+  audio y subtítulos en español.
+- **Modo lector con un clic.** El artículo queda solo, con letra cómoda y
+  tamaño ajustable.
+- **Modo oscuro en todas las páginas**, con excepciones por sitio si algo
+  queda mal.
+- **Motor actualizado por Debian.** El navegador usa el motor web del sistema,
+  así que las correcciones de seguridad llegan con las actualizaciones normales
+  del sistema.
+
+> **Nota:** es un proyecto experimental en desarrollo. Funciona bien para el uso
+> diario de su autor, pero no promete compatibilidad perfecta con toda la web.
+
+## Descargar e instalar
 
 Descargá el paquete para Debian 13 amd64 desde la [última versión publicada](https://github.com/babinium/babinium-browser/releases/latest).
 El artefacto de GitHub Actions también contiene un `.deb` y `bundle/` ejecutable
@@ -80,7 +53,7 @@ sin instalar. Para el bundle se necesitan las dependencias de ejecución del paq
 ```sh
 ./bundle/bin/babinium-browser https://www.youtube.com/
 # Instalación opcional:
-sudo apt install ./babinium-browser_0.4.12_amd64.deb
+sudo apt install ./babinium-browser_0.4.16_amd64.deb
 ```
 
 «Abrir MPV» necesita una versión reciente de `yt-dlp`: la versión de abril de
@@ -144,6 +117,61 @@ otros sitios. YouTube puede cambiar su implementación: la carga de sus
 recomendaciones y la ausencia de solicitudes de video necesitan prueba manual.
 La persistencia del perfil no garantiza que Google acepte iniciar sesión en
 todos los navegadores integrados.
+
+## Funciones en detalle
+
+- Barra de direcciones con búsqueda Google, atrás/adelante, pestañas y descargas.
+- Pestañas vacías negras y «Babinium ⚙» en el extremo derecho de la barra.
+- Favoritos en el perfil, con estrella y panel amplio de títulos y nombres de
+  sitio; cookies y datos de sitios persistentes entre reinicios.
+- Control integrado de velocidad para medios HTML5 mediante { y }, con un
+  indicador temporal. Al pulsar
+  «Babinium» se abre una pestaña de ayuda GTK.
+- Al abrir un video de YouTube, Babinium mantiene la página abierta, deshabilita
+  su reproducción y abre el video automáticamente en MPV. Otro video reemplaza
+  al anterior en el mismo MPV. «Abrir MPV» permite volver a abrir el video tras
+  cerrar el reproductor; MPV puede seguir funcionando al cerrar el navegador.
+  La resolución se elige entre 144p y 1080p en la pestaña «Babinium»; el valor
+  inicial es 720p y la elección se guarda. Prefiere H.264 y audio en español
+  cuando están disponibles. Los subtítulos son opcionales, están desactivados por
+  defecto y la elección se guarda: se prefiere el español y, si falta, otro
+  idioma disponible. Requiere MPV y yt-dlp.
+- La decodificación de video en MPV usa la GPU con VA-API cuando está
+  disponible (Sandy Bridge o más nuevo en Intel); si un stream no la soporta,
+  MPV vuelve a decodificar por software. Con el paquete recomendado
+  `gstreamer1.0-vaapi`, los videos incrustados en páginas también usan la GPU.
+- Los enlaces a streams `.m3u8`, `.mpd` y `.m3u` (televisión en vivo y listas
+  IPTV) también se abren en la ventana de MPV, al pulsarlos o escribirlos en la
+  barra de direcciones. No cubre streams con DRM cifrado, que requieren el
+  módulo de descifrado integrado de Chromium o Firefox.
+- La pestaña de ayuda («Babinium ⚙») incluye ajustes para equipos moderados:
+  reglas por dominio para cargar sin imágenes o sin JavaScript (con recarga de
+  la pestaña al aplicar), límite de caché en disco con recorte de los archivos
+  más viejos al iniciar, y la opción de forzar el compositing acelerado.
+  El motor en uso se muestra en esa misma sección.
+- El botón «Lectura» de la barra activa el modo lector: muestra solo el título
+  y el artículo de la página actual, con letra serif cómoda, paleta clara u
+  oscura según el sistema y detección del contenido que incluye los selectores
+  habituales de los CMS de noticias y el título de las meta-tags. El tamaño de
+  letra se ajusta con los botones A- y A+ del recuadro flotante o con las
+  teclas - y +; para volver a la página original, el mismo botón o la × del
+  recuadro.
+- Para reducir CPU, las animaciones CSS infinitas muy alejadas de la pantalla
+  se pausan y vuelven a moverse antes de entrar en la vista. La opción se puede
+  desactivar desde la ayuda al pulsar «Babinium»; recargá luego la página.
+- Modo oscuro predeterminado con la API local de Dark Reader; el botón Oscuro
+  permite excluir un sitio. YouTube usa su propio tema oscuro cuando está
+  disponible. Cuando el fondo y varios puntos visibles ya son oscuros se evita
+  transformar la página; es una heurística inicial, no detección perfecta. La
+  integración API no incluye todas las correcciones de la extensión de
+  escritorio y respeta las restricciones CORS de la página.
+- Bloqueo de solicitudes, CSS específico y genérico, scriptlets uBO/Brave.
+- Bloqueo activado por defecto y excepciones por hostname exacto con Ctrl+B.
+- EasyList, EasyPrivacy y filtros de uAssets incluidos; actualizaciones HTTPS
+  en segundo plano, con validación y cambio atómico. Un fallo conserva la versión
+  anterior. Sin servicio residente para actualizar ni intérprete para navegar.
+- Sandbox multiproceso de WebKit habilitado, TLS del sistema y cookies sin
+  terceros. El motor se actualiza con las actualizaciones de seguridad de Debian.
 
 ## Arquitectura y límites
 
@@ -217,3 +245,19 @@ veces, PSS la reparte. Deben publicarse ambas, cantidad de procesos, CPU acumula
 y por intervalo, tiempo hasta mostrar interfaz y hasta contenido útil. Comparar
 con otros navegadores exige misma URL, resolución de vídeo, perfil, caché,
 sesión, aceleración y duración. El tamaño del binario no mide el consumo.
+
+## Historial de validación
+
+**Estado: experimental.** No se presenta como el navegador de menor consumo.
+En versiones anteriores se validaron reproducción real de YouTube, bloqueo de
+solicitudes publicitarias y modificación de datos del reproductor. La eliminación
+de preroll/midroll no quedó demostrada porque el control tampoco mostró anuncios
+de vídeo. Miguel informó que la apertura automática de MPV de la versión 0.4.7
+funciona; en 0.4.12 se verificaron nuevamente MPV, resolución, subtítulos y los
+nuevos controles de velocidad.
+Véanse los informes de [validación 0.4.12](docs/validation-0.4.12.md), [validación 0.4.5](docs/validation-0.4.5.md), [validación 0.4.4](docs/validation-0.4.4.md), [validación 0.4.3](docs/validation-0.4.3.md),
+[validación 0.4.2](docs/validation-0.4.2.md), [validación 0.3.1](docs/validation-0.3.1.md),
+[validación 0.3.0](docs/validation-0.3.md), [validación 0.2](docs/validation-0.2.md) y del
+[prototipo inicial 0.1](docs/validation.md).
+La [lista de requisitos y su estado](docs/REQUISITOS.md) conserva todos los
+pedidos y los puntos que todavía requieren pruebas.
