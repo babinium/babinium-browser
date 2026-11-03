@@ -42,6 +42,14 @@ pedidos y los puntos que todavía requieren pruebas.
   IPTV) también se abren en la ventana de MPV, al pulsarlos o escribirlos en la
   barra de direcciones. No cubre streams con DRM cifrado, que requieren el
   módulo de descifrado integrado de Chromium o Firefox.
+- La pestaña de ayuda («Babinium ⚙») incluye ajustes para equipos moderados:
+  reglas por dominio para cargar sin imágenes o sin JavaScript (con recarga de
+  la pestaña al aplicar), límite de caché en disco con recorte de los archivos
+  más viejos al iniciar, y la opción de forzar el compositing acelerado.
+  El motor en uso se muestra en esa misma sección.
+- El botón «Lectura» de la barra activa el modo lector: muestra solo el título
+  y el artículo de la página actual con estilo sobrio, claro u oscuro según el
+  sistema; pulsándolo de nuevo vuelve a la página original.
 - Para reducir CPU, las animaciones CSS infinitas muy alejadas de la pantalla
   se pausan y vuelven a moverse antes de entrar en la vista. La opción se puede
   desactivar desde la ayuda al pulsar «Babinium»; recargá luego la página.
