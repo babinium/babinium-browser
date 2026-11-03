@@ -695,27 +695,22 @@ static gboolean eval_timer(gpointer unused){(void)unused;Tab *t=current();char *
 static gboolean probe(gpointer unused){(void)unused;Tab *t=current();if(t&&t->view)webkit_web_view_evaluate_javascript(WEBKIT_WEB_VIEW(t->view),"JSON.stringify({url:location.href,title:document.title,ready:document.readyState,video:[...document.querySelectorAll('video')].map(v=>({time:v.currentTime,duration:v.duration,paused:v.paused,ready:v.readyState,width:v.videoWidth,height:v.videoHeight,frames:v.getVideoPlaybackQuality?.().totalVideoFrames,dropped:v.getVideoPlaybackQuality?.().droppedVideoFrames,error:v.error?.message})),codecs:document.getElementById('movie_player')?.getStatsForNerds?.()?.codecs,ad:!!document.querySelector('.ad-showing,.ad-interrupting'),error:document.querySelector('.ytp-error-content-wrap')?.innerText,playability:window.ytInitialPlayerResponse?.playabilityStatus?.status})",-1,NULL,NULL,NULL,eval_result,NULL);return G_SOURCE_CONTINUE;}
 static gboolean screenshot(gpointer unused){(void)unused;GdkWindow *gw=gtk_widget_get_window(window);int width=gtk_widget_get_allocated_width(window),height=gtk_widget_get_allocated_height(window);GdkPixbuf *p=gdk_pixbuf_get_from_window(gw,0,0,width,height);if(p){GError *e=NULL;gdk_pixbuf_save(p,opt_screenshot,"png",&e,NULL);log_event("screenshot",e?e->message:opt_screenshot);g_clear_error(&e);g_object_unref(p);}return G_SOURCE_REMOVE;}
 static GtkWidget *button(const char *label,GCallback cb,gpointer data){GtkWidget *b=gtk_button_new_with_label(label);g_signal_connect(b,"clicked",cb,data);gtk_box_pack_start(GTK_BOX(toolbar),b,FALSE,FALSE,0);return b;}
-/* Middle click (or Ctrl+click) on a link opens it in a new foreground tab and
- * prevents WebKitGTK's default middle-click "paste and load". The script runs
- * at document start in every frame and reports the link through the bbclick
- * message handler. */
+/* Middle click (or Ctrl+click) on a link opens it in a new foreground tab.
+ * The script runs at document start in every frame, calls window.open inside
+ * the user gesture so WebKitGTK routes it through the "create" signal (the
+ * same path as target=_blank links) and prevents the default middle-click
+ * "paste and load". Only http/https links are handled. */
 static const char *MIDDLECLICK_JS="(function(){"
-"document.documentElement.setAttribute('data-bb-mc','1');"
 "document.addEventListener('mousedown',function(e){"
 "let mid=e.button===1,ctrl=e.button===0&&e.ctrlKey;"
 "if(!mid&&!ctrl)return;"
 "let a=e.target&&e.target.closest?e.target.closest('a[href]'):null;"
 "if(!a)return;"
+"let u=a.href||'';"
+"if(u.indexOf('http:')!==0&&u.indexOf('https:')!==0)return;"
 "e.preventDefault();e.stopPropagation();"
-"window.webkit.messageHandlers.bbclick.postMessage(a.href);"
+"window.open(u);"
 "},true);})();";
-static void click_message(WebKitUserContentManager *cm,JSCValue *value,gpointer unused){
-    (void)cm;(void)unused;
-    if(!value||!jsc_value_is_string(value))return;
-    char *uri=jsc_value_to_string(value);
-    if(!bookmarkable(uri))return;
-    new_tab(uri,TRUE);
-}
 static void install_scripts(void){
     if(!content)return;
     static char *dark_js,*speed_js,*speed_youtube_js,*animation_js;
@@ -736,7 +731,7 @@ static void install_scripts(void){
     if(speed_youtube_js){WebKitUserScript *u=webkit_user_script_new(speed_youtube_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,speed_youtube_uris,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
     if(speed_js){WebKitUserScript *u=webkit_user_script_new_for_world(speed_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,"babinium-speed",NULL,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
     if(suspend_animations&&animation_js){WebKitUserScript *u=webkit_user_script_new_for_world(animation_js,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,"babinium-animations",NULL,NULL);webkit_user_content_manager_add_script(content,u);webkit_user_script_unref(u);}
-    WebKitUserScript *mc=webkit_user_script_new_for_world(MIDDLECLICK_JS,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,"bbclick",NULL,NULL);webkit_user_content_manager_add_script(content,mc);webkit_user_script_unref(mc);
+    WebKitUserScript *mc=webkit_user_script_new(MIDDLECLICK_JS,WEBKIT_USER_CONTENT_INJECT_ALL_FRAMES,WEBKIT_USER_SCRIPT_INJECT_AT_DOCUMENT_START,NULL,NULL);webkit_user_content_manager_add_script(content,mc);webkit_user_script_unref(mc);
 }
 static void extension_data(WebKitWebContext *ctx){
     char *res=g_build_filename(data_dir,"resources.json",NULL),*js=g_build_filename(data_dir,"cosmetic.js",NULL),*sites=sites_text();
@@ -746,8 +741,6 @@ static void extension_init(WebKitWebContext *ctx,gpointer unused){(void)unused;w
 static void ensure_context(void){
     if(context)return;
     content=webkit_user_content_manager_new();install_scripts();
-    webkit_user_content_manager_register_script_message_handler_in_world(content,"bbclick","bbclick");
-    g_signal_connect(content,"script-message-received::bbclick",G_CALLBACK(click_message),NULL);
     char *cache=g_build_filename(profile,"cache",NULL),*storage=g_build_filename(profile,"web-data",NULL);
     WebKitWebsiteDataManager *dm=webkit_website_data_manager_new("base-data-directory",storage,"base-cache-directory",cache,NULL);context=webkit_web_context_new_with_website_data_manager(dm);g_object_unref(dm);g_free(cache);g_free(storage);
     webkit_web_context_set_sandbox_enabled(context,TRUE);
