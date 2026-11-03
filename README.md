@@ -34,6 +34,10 @@ pedidos y los puntos que todavía requieren pruebas.
   cuando están disponibles. Los subtítulos son opcionales, están desactivados por
   defecto y la elección se guarda: se prefiere el español y, si falta, otro
   idioma disponible. Requiere MPV y yt-dlp.
+- La decodificación de video en MPV usa la GPU con VA-API cuando está
+  disponible (Sandy Bridge o más nuevo en Intel); si un stream no la soporta,
+  MPV vuelve a decodificar por software. Con el paquete recomendado
+  `gstreamer1.0-vaapi`, los videos incrustados en páginas también usan la GPU.
 - Los enlaces a streams `.m3u8`, `.mpd` y `.m3u` (televisión en vivo y listas
   IPTV) también se abren en la ventana de MPV, al pulsarlos o escribirlos en la
   barra de direcciones. No cubre streams con DRM cifrado, que requieren el
