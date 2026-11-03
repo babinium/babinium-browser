@@ -20,6 +20,9 @@ static inline char *bb_mpv_ytdl_format(guint height){
                            height,height,height,height,height);
 }
 #define BB_MPV_AUDIO_LANGUAGE "--alang=es,es-419,es-ES"
+/* Offload H.264 decoding to the Intel GPU; MPV falls back to software when a
+ * stream is unsupported. */
+#define BB_MPV_HWDEC "--hwdec=vaapi"
 #define BB_MPV_NO_SUBTITLES "--sid=no"
 #define BB_MPV_SUBTITLES "--sid=auto"
 #define BB_MPV_SUBTITLE_LANGUAGE "--slang=es"
