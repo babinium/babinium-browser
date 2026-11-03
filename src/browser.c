@@ -127,7 +127,7 @@ static void load_changed(WebKitWebView *v,WebKitLoadEvent event,Tab *t){
 static gboolean load_failed(WebKitWebView *v,WebKitLoadEvent event,const char *uri,GError *e,Tab *t){(void)v;(void)event;(void)uri;(void)t;log_event("load_failed",e->message);return FALSE;}
 static gboolean policy(WebKitWebView *v,WebKitPolicyDecision *d,WebKitPolicyDecisionType type,gpointer unused){
     (void)v;(void)unused;
-    if(type==WEBKIT_POLICY_DECISION_TYPE_NAVIGATION){
+    if(type==WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION){
         WebKitNavigationAction *action=webkit_navigation_policy_decision_get_navigation_action(WEBKIT_NAVIGATION_POLICY_DECISION(d));
         const char *target=webkit_uri_request_get_uri(webkit_navigation_action_get_request(action));
         if(media_stream_url(target)){
