@@ -48,8 +48,12 @@ pedidos y los puntos que todavía requieren pruebas.
   más viejos al iniciar, y la opción de forzar el compositing acelerado.
   El motor en uso se muestra en esa misma sección.
 - El botón «Lectura» de la barra activa el modo lector: muestra solo el título
-  y el artículo de la página actual con estilo sobrio, claro u oscuro según el
-  sistema; pulsándolo de nuevo vuelve a la página original.
+  y el artículo de la página actual, con letra serif cómoda, paleta clara u
+  oscura según el sistema y detección del contenido que incluye los selectores
+  habituales de los CMS de noticias y el título de las meta-tags. El tamaño de
+  letra se ajusta con los botones A- y A+ del recuadro flotante o con las
+  teclas - y +; para volver a la página original, el mismo botón o la × del
+  recuadro.
 - Para reducir CPU, las animaciones CSS infinitas muy alejadas de la pantalla
   se pausan y vuelven a moverse antes de entrar en la vista. La opción se puede
   desactivar desde la ayuda al pulsar «Babinium»; recargá luego la página.
