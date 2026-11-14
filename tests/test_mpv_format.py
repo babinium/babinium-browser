@@ -21,17 +21,17 @@ def audio(name, language, rate=128):
 
 
 class MPVFormatTests(unittest.TestCase):
-    def choose(self, formats):
+    def choose(self, formats, height=1080):
         info = {'id': 'fixture', 'title': 'fixture', 'extractor': 'generic', 'formats': formats}
         with tempfile.TemporaryDirectory(prefix='bb-mpv-format-') as directory:
             path = Path(directory) / 'info.json'
             path.write_text(json.dumps(info))
             return subprocess.run(['yt-dlp', '--ignore-config', '--simulate', '--load-info-json',
-                                   str(path), '--format', selector(), '--print', '%(format_id)s'],
+                                   str(path), '--format', selector(height), '--print', '%(format_id)s'],
                                   capture_output=True, text=True, timeout=20)
 
-    def assert_choice(self, formats, expected):
-        result = self.choose(formats)
+    def assert_choice(self, formats, expected, height=1080):
+        result = self.choose(formats, height=height)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.strip(), expected)
 
@@ -60,10 +60,10 @@ class MPVFormatTests(unittest.TestCase):
 
     def test_360_fast_mode_keeps_spanish_and_otherwise_prefers_combined(self):
         self.assert_choice([video('360v', 360), audio('spanish', 'es'),
-                            {'format_id': '18', 'ext': 'mp4', 'height': 360, 'vcodec': 'avc1', 'acodec': 'mp4a'}],
+                            video('18', 360, audio='mp4a.40.2')],
                            '360v+spanish', height=360)
         self.assert_choice([video('360v', 360), audio('english', 'en'),
-                            {'format_id': '18', 'ext': 'mp4', 'height': 360, 'vcodec': 'avc1', 'acodec': 'mp4a'}],
+                            video('18', 360, audio='mp4a.40.2')],
                            '18', height=360)
 
     def test_never_falls_back_to_4k(self):
