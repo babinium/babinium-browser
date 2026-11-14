@@ -152,8 +152,10 @@ todos los navegadores integrados.
   al anterior en el mismo MPV. «Abrir MPV» permite volver a abrir el video tras
   cerrar el reproductor; MPV puede seguir funcionando al cerrar el navegador.
   La resolución se elige entre 144p y 1080p en la pestaña «Babinium»; el valor
-  inicial es 720p y la elección se guarda. Prefiere H.264 y audio en español
-  cuando están disponibles. Los subtítulos son opcionales, están desactivados por
+  inicial es 720p y la elección se guarda. La opción «360p (máx. vel.)» prioriza
+  la descarga rápida de YouTube (ideal para reproducir a velocidades altas como
+  3× sin cortes) manteniendo el audio en español cuando está disponible. Prefiere
+  H.264 y audio en español cuando están disponibles. Los subtítulos son opcionales, están desactivados por
   defecto y la elección se guarda: se prefiere el español y, si falta, otro
   idioma disponible. Requiere MPV y yt-dlp.
 - La decodificación de video en MPV usa la GPU con VA-API cuando está
