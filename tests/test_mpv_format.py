@@ -60,7 +60,10 @@ class MPVFormatTests(unittest.TestCase):
 
     def test_360_fast_mode_keeps_spanish_and_otherwise_prefers_combined(self):
         self.assert_choice([video('360v', 360), audio('spanish', 'es'),
-                            video('18', 360, audio='mp4a.40.2')],
+                            video('18', 360, audio='mp4a.40.2', language='es')],
+                           '18', height=360)
+        self.assert_choice([video('360v', 360), audio('spanish', 'es'),
+                            video('18', 360, audio='mp4a.40.2', language='en')],
                            '360v+spanish', height=360)
         self.assert_choice([video('360v', 360), audio('english', 'en'),
                             video('18', 360, audio='mp4a.40.2')],

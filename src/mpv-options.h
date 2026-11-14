@@ -19,12 +19,12 @@
  * the combined progressive format (e.g. itag 18 via Android client) before
  * throttled separate streams. */
 #define BB_MPV_YTDL_FORMAT_FAST_TEMPLATE \
-    "(bestvideo[height=%u][vcodec^=avc1]/bestvideo[height=%u])+bestaudio[language^=es]/" \
     "best[height=%u][language^=es]/" \
+    "(bestvideo[height=%u][vcodec^=avc1]/bestvideo[height=%u])+bestaudio[language^=es]/" \
     "best[height=%u]/" \
     "(bestvideo[height=%u][vcodec^=avc1]/bestvideo[height=%u])+bestaudio/" \
-    "bestvideo[height<%u]+bestaudio[language^=es]/" \
     "best[height<%u][language^=es]/" \
+    "bestvideo[height<%u]+bestaudio[language^=es]/" \
     "best[height<%u]/" \
     "bestvideo[height<%u]+bestaudio"
 
