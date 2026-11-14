@@ -81,7 +81,8 @@ static void exchange(GTask *task,gpointer source,gpointer data,GCancellable *can
     json_builder_set_member_name(b,"slang");json_builder_add_string_value(b,"es");
     json_builder_set_member_name(b,"subs-fallback");json_builder_add_string_value(b,"yes");
     json_builder_set_member_name(b,"subs-with-matching-audio");json_builder_add_string_value(b,"yes");
-    json_builder_set_member_name(b,"ytdl-raw-options");json_builder_add_string_value(b,a->subtitles?"write-auto-subs=,sub-langs=^$":"sub-langs=^$");
+    char *raw_opts=bb_mpv_ytdl_raw_options(a->resolution,a->subtitles);
+    json_builder_set_member_name(b,"ytdl-raw-options");json_builder_add_string_value(b,raw_opts);g_free(raw_opts);
     const char *extractor=a->subtitles?subtitle_helper:"yt-dlp";
     char *script_opts=g_strdup_printf("ytdl_hook-ytdl_path=%%%zu%%%s",strlen(extractor),extractor);
     json_builder_set_member_name(b,"script-opts");json_builder_add_string_value(b,script_opts);g_free(script_opts);
@@ -137,15 +138,16 @@ static gboolean start_player(void){
     if(!pending)return FALSE;
     char *ipc=g_strconcat("--input-ipc-server=",socket_path,NULL);
     char *format=bb_mpv_ytdl_format(pending_resolution),*format_arg=g_strconcat("--ytdl-format=",format,NULL);
+    char *raw_opts=bb_mpv_ytdl_raw_options(pending_resolution,pending_subtitles),*raw_arg=g_strconcat("--ytdl-raw-options=",raw_opts,NULL);
     const char *extractor=pending_subtitles?subtitle_helper:"yt-dlp";
     char *script_opts=g_strdup_printf("--script-opts=ytdl_hook-ytdl_path=%%%zu%%%s",strlen(extractor),extractor);
     const char *argv[]={"mpv","--force-window=immediate","--no-terminal",ipc,format_arg,
                         BB_MPV_AUDIO_LANGUAGE,BB_MPV_HWDEC,pending_subtitles?BB_MPV_SUBTITLES:BB_MPV_NO_SUBTITLES,
                         BB_MPV_SUBTITLE_LANGUAGE,BB_MPV_SUBTITLE_FALLBACK,BB_MPV_SUBTITLE_MATCHING_AUDIO,
-                        pending_subtitles?BB_MPV_YTDL_SUBTITLES:BB_MPV_YTDL_NO_SUBTITLES,script_opts,"--",pending,NULL};
+                        raw_arg,script_opts,"--",pending,NULL};
     GSubprocessLauncher *launcher=g_subprocess_launcher_new(G_SUBPROCESS_FLAGS_STDOUT_SILENCE|G_SUBPROCESS_FLAGS_STDERR_SILENCE);
     g_subprocess_launcher_set_child_setup(launcher,player_child_setup,NULL,NULL);
-    GError *error=NULL;player=g_subprocess_launcher_spawnv(launcher,argv,&error);g_object_unref(launcher);g_free(ipc);g_free(format_arg);g_free(format);g_free(script_opts);
+    GError *error=NULL;player=g_subprocess_launcher_spawnv(launcher,argv,&error);g_object_unref(launcher);g_free(ipc);g_free(format_arg);g_free(format);g_free(raw_arg);g_free(raw_opts);g_free(script_opts);
     if(!player){
         char *message=g_strdup_printf("No se pudo iniciar MPV; verificá que esté instalado: %s",error?error->message:"error desconocido");
         g_clear_error(&error);g_clear_pointer(&pending,g_free);unlock_start();show_error(message);g_free(message);return FALSE;

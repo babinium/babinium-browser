@@ -58,6 +58,14 @@ class MPVFormatTests(unittest.TestCase):
         self.assert_choice([video('4k', 2160), video('480', 480), audio('english', 'en')],
                            '480+english')
 
+    def test_360_fast_mode_keeps_spanish_and_otherwise_prefers_combined(self):
+        self.assert_choice([video('360v', 360), audio('spanish', 'es'),
+                            {'format_id': '18', 'ext': 'mp4', 'height': 360, 'vcodec': 'avc1', 'acodec': 'mp4a'}],
+                           '360v+spanish', height=360)
+        self.assert_choice([video('360v', 360), audio('english', 'en'),
+                            {'format_id': '18', 'ext': 'mp4', 'height': 360, 'vcodec': 'avc1', 'acodec': 'mp4a'}],
+                           '18', height=360)
+
     def test_never_falls_back_to_4k(self):
         result = self.choose([video('4k', 2160), audio('english', 'en')])
         self.assertNotEqual(result.returncode, 0)

@@ -15,8 +15,22 @@
     "bestvideo[height<%u]+bestaudio/" \
     "best[height<%u]"
 
+/* Fast 360p mode: keep Spanish audio first when available, otherwise prefer
+ * the combined progressive format (e.g. itag 18 via Android client) before
+ * throttled separate streams. */
+#define BB_MPV_YTDL_FORMAT_FAST_TEMPLATE \
+    "(bestvideo[height=%u][vcodec^=avc1]/bestvideo[height=%u])+bestaudio[language^=es]/" \
+    "best[height=%u][language^=es]/" \
+    "best[height=%u]/" \
+    "(bestvideo[height=%u][vcodec^=avc1]/bestvideo[height=%u])+bestaudio/" \
+    "bestvideo[height<%u]+bestaudio[language^=es]/" \
+    "best[height<%u][language^=es]/" \
+    "best[height<%u]/" \
+    "bestvideo[height<%u]+bestaudio"
+
 static inline char *bb_mpv_ytdl_format(guint height){
-    return g_strdup_printf(BB_MPV_YTDL_FORMAT_TEMPLATE,height,height,height,height,height,
+    const char *tmpl=height==360?BB_MPV_YTDL_FORMAT_FAST_TEMPLATE:BB_MPV_YTDL_FORMAT_TEMPLATE;
+    return g_strdup_printf(tmpl,height,height,height,height,height,
                            height,height,height,height,height);
 }
 #define BB_MPV_AUDIO_LANGUAGE "--alang=es,es-419,es-ES"
@@ -33,5 +47,11 @@ static inline char *bb_mpv_ytdl_format(guint height){
 #define BB_MPV_YTDL_NO_SUBTITLES "--ytdl-raw-options=sub-langs=^$"
 /* The helper chooses one Spanish track, or one other track as a fallback. */
 #define BB_MPV_YTDL_SUBTITLES "--ytdl-raw-options=write-auto-subs=,sub-langs=^$"
+#define BB_MPV_YTDL_FAST_EXTRACTOR ",extractor-args=%37%youtube:player_client=android,default"
+
+static inline char *bb_mpv_ytdl_raw_options(guint height,gboolean subtitles){
+    const char *base=subtitles?"write-auto-subs=,sub-langs=^$":"sub-langs=^$";
+    return g_strconcat(base,height==360?BB_MPV_YTDL_FAST_EXTRACTOR:"",NULL);
+}
 
 #endif

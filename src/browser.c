@@ -381,7 +381,7 @@ static void open_help(GtkButton *button,gpointer unused){
     GtkWidget *resolution_label=gtk_label_new("Resolución de MPV:");
     GtkWidget *resolution_combo=gtk_combo_box_text_new();
     for(guint i=0;i<G_N_ELEMENTS(mpv_resolutions);i++){
-        char *label=g_strdup_printf("%up",mpv_resolutions[i]);gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(resolution_combo),label);g_free(label);
+        char *label=mpv_resolutions[i]==360?g_strdup("360p (máx. vel.)"):g_strdup_printf("%up",mpv_resolutions[i]);gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(resolution_combo),label);g_free(label);
     }
     gtk_combo_box_set_active(GTK_COMBO_BOX(resolution_combo),mpv_resolution_index(mpv_resolution));
     g_signal_connect(resolution_combo,"changed",G_CALLBACK(set_mpv_resolution),NULL);
@@ -393,7 +393,7 @@ static void open_help(GtkButton *button,gpointer unused){
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(subtitles_toggle),mpv_subtitles);
     g_signal_connect(subtitles_toggle,"toggled",G_CALLBACK(set_mpv_subtitles),NULL);
     g_object_set_data(G_OBJECT(t->help),"bb-mpv-subtitles",subtitles_toggle);gtk_box_pack_start(GTK_BOX(body),subtitles_toggle,FALSE,FALSE,0);
-    GtkWidget *resolution_note=gtk_label_new("Los cambios se aplican al abrir o volver a abrir un video. Si esa calidad no existe, se usa una inferior disponible.\nSi activás los subtítulos, se prefiere el español; si no existe, se usa otro idioma disponible.");
+    GtkWidget *resolution_note=gtk_label_new("Los cambios se aplican al abrir o volver a abrir un video. Si esa calidad no existe, se usa una inferior disponible.\n«360p (máx. vel.)» prioriza la descarga rápida para ver a mayor velocidad sin cortes, conservando el audio en español cuando está disponible.\nSi activás los subtítulos, se prefiere el español; si no existe, se usa otro idioma disponible.");
     gtk_label_set_line_wrap(GTK_LABEL(resolution_note),TRUE);gtk_label_set_xalign(GTK_LABEL(resolution_note),0);gtk_box_pack_start(GTK_BOX(body),resolution_note,FALSE,FALSE,0);
     GtkWidget *animation_toggle=gtk_check_button_new_with_label("Pausar animaciones lejanas para reducir el uso de CPU");
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(animation_toggle),suspend_animations);
@@ -804,7 +804,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.18");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.19");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);
