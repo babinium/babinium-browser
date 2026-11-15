@@ -88,6 +88,34 @@ tercera línea
         self.assertFalse(subtitles.fix_original_spanish_combined_formats(info))
         self.assertEqual(fmt18['language'], 'en')
 
+    def test_portuguese_original_with_spanish_dub_stays_on_dubbed_stream(self):
+        # The root language reflects the selected Spanish dub, not the original.
+        fmt18 = {'format_id': '18', 'vcodec': 'avc1.42001E', 'acodec': 'mp4a.40.2',
+                 'height': 360, 'language': 'en',
+                 'url': 'https://rr4.googlevideo.com/videoplayback?itag=18&c=ANDROID'}
+        original = {'format_id': '251-2', 'vcodec': 'none', 'acodec': 'opus',
+                    'language': 'pt-BR', 'format_note': 'Portuguese (BR) original (default), medium'}
+        spanish = {'format_id': '251-1', 'vcodec': 'none', 'acodec': 'opus',
+                   'language': 'es-US', 'format_note': 'Spanish (US), medium'}
+        info = {'language': 'es-US', 'format_id': '134+251-1',
+                'requested_formats': [{'format_id': '134'}, {'format_id': '251-1'}],
+                'formats': [fmt18, original, spanish]}
+        self.assertFalse(subtitles.fix_original_spanish_combined_formats(info, prefer_combined_360=True))
+        self.assertEqual(info['format_id'], '134+251-1')
+        self.assertEqual(fmt18['language'], 'en')
+
+    def test_spanish_original_with_mislabeled_combined_uses_fast_stream(self):
+        fmt18 = {'format_id': '18', 'vcodec': 'avc1.42001E', 'acodec': 'mp4a.40.2',
+                 'height': 360, 'language': 'ar', 'ext': 'mp4',
+                 'url': 'https://rr4.googlevideo.com/videoplayback?itag=18&c=ANDROID'}
+        original = {'format_id': '251-3', 'vcodec': 'none', 'acodec': 'opus',
+                    'language': 'es-US', 'format_note': 'es-US - original (original)'}
+        info = {'language': 'ar', 'format_id': '134+251-3',
+                'requested_formats': [{'format_id': '134'}, {'format_id': '251-3'}],
+                'formats': [fmt18, original]}
+        self.assertTrue(subtitles.fix_original_spanish_combined_formats(info, prefer_combined_360=True))
+        self.assertEqual(info['format_id'], '18')
+
 
 if __name__ == '__main__':
     unittest.main()

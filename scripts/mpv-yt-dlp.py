@@ -151,22 +151,27 @@ def is_spanish(language):
     return name == "es" or name == "spa" or name.startswith("es-")
 
 
+def original_language(info, formats):
+    """YouTube tags the real original track in format_note; the root
+    "language" reflects the selected audio and may be a dub."""
+    for item in formats:
+        if not isinstance(item, dict):
+            continue
+        note = str(item.get("format_note") or "").lower()
+        lang = item.get("language")
+        if isinstance(lang, str) and lang and "original" in note:
+            return lang
+    lang = info.get("language")
+    return lang if isinstance(lang, str) else None
+
+
 def fix_original_spanish_combined_formats(info, prefer_combined_360=False):
     """Fix YouTube's mislabeled combined progressive format on multi-audio Spanish videos."""
-    orig_lang = info.get("language") if is_spanish(info.get("language")) else None
     formats = info.get("formats")
     if not isinstance(formats, list):
         return False
-    if not orig_lang:
-        for item in formats:
-            if not isinstance(item, dict):
-                continue
-            note = str(item.get("format_note") or "").lower()
-            lang = item.get("language")
-            if "original" in note and is_spanish(lang):
-                orig_lang = lang
-                break
-    if not orig_lang:
+    orig_lang = original_language(info, formats)
+    if not is_spanish(orig_lang):
         return False
     changed = False
     best_360 = None
