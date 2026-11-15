@@ -34,6 +34,9 @@ static inline char *bb_mpv_ytdl_format(guint height){
                            height,height,height,height,height);
 }
 #define BB_MPV_AUDIO_LANGUAGE "--alang=es,es-419,es-ES"
+/* GPU upscaling with spline36: built into the GL/Vulkan renderer, no extra
+ * CPU cost on modest hardware, and sharper than the bilinear fallback. */
+#define BB_MPV_SCALE "--scale=spline36"
 /* Offload H.264 decoding to the Intel GPU; MPV falls back to software when a
  * stream is unsupported. */
 #define BB_MPV_HWDEC "--hwdec=vaapi"
