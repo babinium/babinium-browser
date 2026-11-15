@@ -70,10 +70,16 @@ tercera línea
 
     def test_fixes_mislabeled_combined_format_on_original_spanish_video(self):
         fmt18 = {'format_id': '18', 'vcodec': 'avc1.42001E', 'acodec': 'mp4a.40.2',
-                 'language': 'ar', 'url': 'https://rr4.googlevideo.com/videoplayback?itag=18&c=ANDROID'}
-        info = {'language': 'es-US', 'formats': [fmt18]}
-        self.assertTrue(subtitles.fix_original_spanish_combined_formats(info))
+                 'height': 360, 'ext': 'mp4', 'language': 'ar',
+                 'url': 'https://rr4.googlevideo.com/videoplayback?itag=18&c=ANDROID'}
+        info = {'language': 'es-US', 'format_id': '134+251-3',
+                'requested_formats': [{'format_id': '134'}, {'format_id': '251-3'}],
+                'formats': [fmt18]}
+        self.assertTrue(subtitles.fix_original_spanish_combined_formats(info, prefer_combined_360=True))
         self.assertEqual(fmt18['language'], 'es-US')
+        self.assertEqual(info['format_id'], '18')
+        self.assertEqual(info['url'], fmt18['url'])
+        self.assertNotIn('requested_formats', info)
 
     def test_keeps_combined_format_untouched_on_non_spanish_video(self):
         fmt18 = {'format_id': '18', 'vcodec': 'avc1.42001E', 'acodec': 'mp4a.40.2',

@@ -151,7 +151,7 @@ def is_spanish(language):
     return name == "es" or name == "spa" or name.startswith("es-")
 
 
-def fix_original_spanish_combined_formats(info):
+def fix_original_spanish_combined_formats(info, prefer_combined_360=False):
     """Fix YouTube's mislabeled combined progressive format on multi-audio Spanish videos."""
     orig_lang = info.get("language") if is_spanish(info.get("language")) else None
     formats = info.get("formats")
@@ -169,6 +169,7 @@ def fix_original_spanish_combined_formats(info):
     if not orig_lang:
         return False
     changed = False
+    best_360 = None
     for item in formats:
         if not isinstance(item, dict):
             continue
@@ -182,6 +183,17 @@ def fix_original_spanish_combined_formats(info):
         if not is_spanish(item.get("language")):
             item["language"] = orig_lang
             changed = True
+        if prefer_combined_360 and item.get("height") == 360 and item.get("url"):
+            best_360 = item
+    if prefer_combined_360 and best_360 and info.get("format_id") != best_360.get("format_id"):
+        info.pop("requested_formats", None)
+        info.pop("requested_downloads", None)
+        for key in ("url", "format_id", "format", "ext", "vcodec", "acodec",
+                    "language", "width", "height", "fps", "tbr", "format_note",
+                    "protocol", "http_headers"):
+            if key in best_360:
+                info[key] = best_360[key]
+        changed = True
     return changed
 
 
@@ -190,6 +202,7 @@ def main():
     if "-J" not in args:
         os.execvp(args[0], args)
     want_subs = "--write-auto-subs" in args
+    prefer_360 = any(arg.startswith("best[height=360][language^=es]/") for arg in args)
     result = subprocess.run(args, stdout=subprocess.PIPE, check=False)
     if result.returncode:
         sys.stdout.buffer.write(result.stdout)
@@ -198,7 +211,7 @@ def main():
         info = json.loads(result.stdout)
         if not isinstance(info, dict):
             raise ValueError("expected a video object")
-        changed = fix_original_spanish_combined_formats(info)
+        changed = fix_original_spanish_combined_formats(info, prefer_combined_360=prefer_360)
         if want_subs:
             info["requested_subtitles"] = select_subtitle(info)
             # The MPV hook needs only the selected track, not the full track catalog.
