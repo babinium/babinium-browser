@@ -154,7 +154,10 @@ todos los navegadores integrados.
   La resolución se elige entre 144p y 1080p en la pestaña «Babinium»; el valor
   inicial es 720p y la elección se guarda. La opción «360p (máx. vel.)» prioriza
   la descarga rápida de YouTube (ideal para reproducir a velocidades altas como
-  3× sin cortes) manteniendo el audio en español cuando está disponible. Prefiere
+  3× sin cortes) manteniendo siempre el audio en español: si el video es
+  originalmente en español usa el formato rápido aunque YouTube le haya puesto
+  otra etiqueta de idioma; si el original es otro idioma y hay doblaje al
+  español, usa ese doblaje aunque el stream separado cargue más lento. Prefiere
   H.264 y audio en español cuando están disponibles. Los subtítulos son opcionales, están desactivados por
   defecto y la elección se guarda: se prefiere el español y, si falta, otro
   idioma disponible. Requiere MPV y yt-dlp.
