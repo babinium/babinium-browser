@@ -144,10 +144,52 @@ def select_subtitle(info):
     return {language: track}
 
 
+def is_spanish(language):
+    if not isinstance(language, str):
+        return False
+    name = language.lower().replace("_", "-")
+    return name == "es" or name == "spa" or name.startswith("es-")
+
+
+def fix_original_spanish_combined_formats(info):
+    """Fix YouTube's mislabeled combined progressive format on multi-audio Spanish videos."""
+    orig_lang = info.get("language") if is_spanish(info.get("language")) else None
+    formats = info.get("formats")
+    if not isinstance(formats, list):
+        return False
+    if not orig_lang:
+        for item in formats:
+            if not isinstance(item, dict):
+                continue
+            note = str(item.get("format_note") or "").lower()
+            lang = item.get("language")
+            if "original" in note and is_spanish(lang):
+                orig_lang = lang
+                break
+    if not orig_lang:
+        return False
+    changed = False
+    for item in formats:
+        if not isinstance(item, dict):
+            continue
+        vcodec = item.get("vcodec")
+        acodec = item.get("acodec")
+        if not vcodec or vcodec == "none" or not acodec or acodec == "none":
+            continue
+        url = str(item.get("url") or "")
+        if "acont%3ddubbed" in url.lower() or "acont=dubbed" in url.lower():
+            continue
+        if not is_spanish(item.get("language")):
+            item["language"] = orig_lang
+            changed = True
+    return changed
+
+
 def main():
     args = ["yt-dlp", *sys.argv[1:]]
-    if "--write-auto-subs" not in args or "-J" not in args:
+    if "-J" not in args:
         os.execvp(args[0], args)
+    want_subs = "--write-auto-subs" in args
     result = subprocess.run(args, stdout=subprocess.PIPE, check=False)
     if result.returncode:
         sys.stdout.buffer.write(result.stdout)
@@ -156,11 +198,17 @@ def main():
         info = json.loads(result.stdout)
         if not isinstance(info, dict):
             raise ValueError("expected a video object")
-        info["requested_subtitles"] = select_subtitle(info)
-        # The MPV hook needs only the selected track, not the full track catalog.
-        info.pop("subtitles", None)
-        info.pop("automatic_captions", None)
-        sys.stdout.write(json.dumps(info, ensure_ascii=True) + "\n")
+        changed = fix_original_spanish_combined_formats(info)
+        if want_subs:
+            info["requested_subtitles"] = select_subtitle(info)
+            # The MPV hook needs only the selected track, not the full track catalog.
+            info.pop("subtitles", None)
+            info.pop("automatic_captions", None)
+            changed = True
+        if changed:
+            sys.stdout.write(json.dumps(info, ensure_ascii=True) + "\n")
+        else:
+            sys.stdout.buffer.write(result.stdout)
     except (UnicodeDecodeError, ValueError, TypeError):
         # Preserve yt-dlp's output if its response changes unexpectedly.
         sys.stdout.buffer.write(result.stdout)

@@ -83,7 +83,7 @@ static void exchange(GTask *task,gpointer source,gpointer data,GCancellable *can
     json_builder_set_member_name(b,"subs-with-matching-audio");json_builder_add_string_value(b,"yes");
     char *raw_opts=bb_mpv_ytdl_raw_options(a->resolution,a->subtitles);
     json_builder_set_member_name(b,"ytdl-raw-options");json_builder_add_string_value(b,raw_opts);g_free(raw_opts);
-    const char *extractor=a->subtitles?subtitle_helper:"yt-dlp";
+    const char *extractor=(a->subtitles||a->resolution==360)?subtitle_helper:"yt-dlp";
     char *script_opts=g_strdup_printf("ytdl_hook-ytdl_path=%%%zu%%%s",strlen(extractor),extractor);
     json_builder_set_member_name(b,"script-opts");json_builder_add_string_value(b,script_opts);g_free(script_opts);
     json_builder_end_object(b);json_builder_end_array(b);g_free(format);
@@ -139,7 +139,7 @@ static gboolean start_player(void){
     char *ipc=g_strconcat("--input-ipc-server=",socket_path,NULL);
     char *format=bb_mpv_ytdl_format(pending_resolution),*format_arg=g_strconcat("--ytdl-format=",format,NULL);
     char *raw_opts=bb_mpv_ytdl_raw_options(pending_resolution,pending_subtitles),*raw_arg=g_strconcat("--ytdl-raw-options=",raw_opts,NULL);
-    const char *extractor=pending_subtitles?subtitle_helper:"yt-dlp";
+    const char *extractor=(pending_subtitles||pending_resolution==360)?subtitle_helper:"yt-dlp";
     char *script_opts=g_strdup_printf("--script-opts=ytdl_hook-ytdl_path=%%%zu%%%s",strlen(extractor),extractor);
     const char *argv[]={"mpv","--force-window=immediate","--no-terminal",ipc,format_arg,
                         BB_MPV_AUDIO_LANGUAGE,BB_MPV_HWDEC,pending_subtitles?BB_MPV_SUBTITLES:BB_MPV_NO_SUBTITLES,

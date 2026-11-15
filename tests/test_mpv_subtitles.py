@@ -68,6 +68,20 @@ tercera línea
         track = {'ext': 'srt', 'data': 'English'}
         self.assertIs(subtitles.select_subtitle({'subtitles': {'en': [track]}})['en'], track)
 
+    def test_fixes_mislabeled_combined_format_on_original_spanish_video(self):
+        fmt18 = {'format_id': '18', 'vcodec': 'avc1.42001E', 'acodec': 'mp4a.40.2',
+                 'language': 'ar', 'url': 'https://rr4.googlevideo.com/videoplayback?itag=18&c=ANDROID'}
+        info = {'language': 'es-US', 'formats': [fmt18]}
+        self.assertTrue(subtitles.fix_original_spanish_combined_formats(info))
+        self.assertEqual(fmt18['language'], 'es-US')
+
+    def test_keeps_combined_format_untouched_on_non_spanish_video(self):
+        fmt18 = {'format_id': '18', 'vcodec': 'avc1.42001E', 'acodec': 'mp4a.40.2',
+                 'language': 'en', 'url': 'https://rr4.googlevideo.com/videoplayback?itag=18&c=ANDROID'}
+        info = {'language': 'en', 'formats': [fmt18]}
+        self.assertFalse(subtitles.fix_original_spanish_combined_formats(info))
+        self.assertEqual(fmt18['language'], 'en')
+
 
 if __name__ == '__main__':
     unittest.main()
