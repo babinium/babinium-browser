@@ -161,10 +161,14 @@ todos los navegadores integrados.
   H.264 y audio en español cuando están disponibles. Los subtítulos son opcionales, están desactivados por
   defecto y la elección se guarda: se prefiere el español y, si falta, otro
   idioma disponible. Requiere MPV y yt-dlp.
-- La decodificación de video en MPV usa la GPU con VA-API cuando está
-  disponible (Sandy Bridge o más nuevo en Intel); si un stream no la soporta,
-  MPV vuelve a decodificar por software. Con el paquete recomendado
+- La decodificación de video en MPV usa aceleración por hardware cuando está
+  disponible: VA-API en Intel y AMD, NVDEC en NVIDIA (`--hwdec=auto-safe`); si
+  el equipo o el stream no la soportan, MPV vuelve a decodificar por software.
+  Con el paquete recomendado
   `gstreamer1.0-vaapi`, los videos incrustados en páginas también usan la GPU.
+- Los videos de baja resolución (360p/480p) se ven con escalado spline36 de
+  luminancia y color, con antiringing y debanding suave; todo corre en la GPU,
+  sin sumar CPU.
 - Los enlaces de la barra de direcciones y de las páginas tienen atajos de
   mouse: **clic con la ruedita** abre el enlace en una pestaña nueva al frente
   (YouTube, streams .m3u8/.mpd/.m3u o cualquier sitio), y **Ctrl+clic sobre un

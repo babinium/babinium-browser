@@ -75,7 +75,7 @@ static void exchange(GTask *task,gpointer source,gpointer data,GCancellable *can
     json_builder_add_string_value(b,"replace");json_builder_add_int_value(b,-1);
     char *format=bb_mpv_ytdl_format(a->resolution);
     json_builder_begin_object(b);json_builder_set_member_name(b,"ytdl-format");json_builder_add_string_value(b,format);
-    json_builder_set_member_name(b,"hwdec");json_builder_add_string_value(b,"vaapi");
+    json_builder_set_member_name(b,"hwdec");json_builder_add_string_value(b,"auto-safe");
     json_builder_set_member_name(b,"scale");json_builder_add_string_value(b,"spline36");
     json_builder_set_member_name(b,"scale-antiring");json_builder_add_double_value(b,0.7);
     json_builder_set_member_name(b,"cscale");json_builder_add_string_value(b,"spline36");

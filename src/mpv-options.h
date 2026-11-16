@@ -45,7 +45,9 @@ static inline char *bb_mpv_ytdl_format(guint height){
 #define BB_MPV_DEBAND_GRAIN "--deband-grain=0"
 /* Offload H.264 decoding to the Intel GPU; MPV falls back to software when a
  * stream is unsupported. */
-#define BB_MPV_HWDEC "--hwdec=vaapi"
+/* Try every safe hardware decoder available (VA-API on Intel/AMD, NVDEC on
+ * NVIDIA); MPV falls back to software decoding when none works. */
+#define BB_MPV_HWDEC "--hwdec=auto-safe"
 #define BB_MPV_NO_SUBTITLES "--sid=no"
 #define BB_MPV_SUBTITLES "--sid=auto"
 #define BB_MPV_SUBTITLE_LANGUAGE "--slang=es"
