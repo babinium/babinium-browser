@@ -77,6 +77,11 @@ static void exchange(GTask *task,gpointer source,gpointer data,GCancellable *can
     json_builder_begin_object(b);json_builder_set_member_name(b,"ytdl-format");json_builder_add_string_value(b,format);
     json_builder_set_member_name(b,"hwdec");json_builder_add_string_value(b,"vaapi");
     json_builder_set_member_name(b,"scale");json_builder_add_string_value(b,"spline36");
+    json_builder_set_member_name(b,"scale-antiring");json_builder_add_double_value(b,0.7);
+    json_builder_set_member_name(b,"cscale");json_builder_add_string_value(b,"spline36");
+    json_builder_set_member_name(b,"deband");json_builder_add_string_value(b,"yes");
+    json_builder_set_member_name(b,"deband-iterations");json_builder_add_int_value(b,2);
+    json_builder_set_member_name(b,"deband-grain");json_builder_add_int_value(b,0);
     json_builder_set_member_name(b,"alang");json_builder_add_string_value(b,"es,es-419,es-ES");
     json_builder_set_member_name(b,"sid");json_builder_add_string_value(b,a->subtitles?"auto":"no");
     json_builder_set_member_name(b,"slang");json_builder_add_string_value(b,"es");
@@ -143,7 +148,9 @@ static gboolean start_player(void){
     const char *extractor=(pending_subtitles||pending_resolution==360)?subtitle_helper:"yt-dlp";
     char *script_opts=g_strdup_printf("--script-opts=ytdl_hook-ytdl_path=%%%zu%%%s",strlen(extractor),extractor);
     const char *argv[]={"mpv","--force-window=immediate","--no-terminal",ipc,format_arg,
-                        BB_MPV_AUDIO_LANGUAGE,BB_MPV_HWDEC,BB_MPV_SCALE,pending_subtitles?BB_MPV_SUBTITLES:BB_MPV_NO_SUBTITLES,
+                        BB_MPV_AUDIO_LANGUAGE,BB_MPV_HWDEC,BB_MPV_SCALE,BB_MPV_SCALE_ANTIRING,
+                        BB_MPV_CSCALE,BB_MPV_DEBAND,BB_MPV_DEBAND_ITERATIONS,BB_MPV_DEBAND_GRAIN,
+                        pending_subtitles?BB_MPV_SUBTITLES:BB_MPV_NO_SUBTITLES,
                         BB_MPV_SUBTITLE_LANGUAGE,BB_MPV_SUBTITLE_FALLBACK,BB_MPV_SUBTITLE_MATCHING_AUDIO,
                         raw_arg,script_opts,"--",pending,NULL};
     GSubprocessLauncher *launcher=g_subprocess_launcher_new(G_SUBPROCESS_FLAGS_STDOUT_SILENCE|G_SUBPROCESS_FLAGS_STDERR_SILENCE);

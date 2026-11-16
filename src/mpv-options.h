@@ -34,9 +34,15 @@ static inline char *bb_mpv_ytdl_format(guint height){
                            height,height,height,height,height);
 }
 #define BB_MPV_AUDIO_LANGUAGE "--alang=es,es-419,es-ES"
-/* GPU upscaling with spline36: built into the GL/Vulkan renderer, no extra
- * CPU cost on modest hardware, and sharper than the bilinear fallback. */
+/* GPU-only quality filters for low-resolution sources: spline36 upscaling with
+ * anti-ringing, spline36 chroma upscaling and light debanding. All run as
+ * shaders on the GPU and keep VA-API hardware decoding. */
 #define BB_MPV_SCALE "--scale=spline36"
+#define BB_MPV_SCALE_ANTIRING "--scale-antiring=0.7"
+#define BB_MPV_CSCALE "--cscale=spline36"
+#define BB_MPV_DEBAND "--deband=yes"
+#define BB_MPV_DEBAND_ITERATIONS "--deband-iterations=2"
+#define BB_MPV_DEBAND_GRAIN "--deband-grain=0"
 /* Offload H.264 decoding to the Intel GPU; MPV falls back to software when a
  * stream is unsupported. */
 #define BB_MPV_HWDEC "--hwdec=vaapi"
