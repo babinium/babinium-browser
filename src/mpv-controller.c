@@ -14,7 +14,7 @@
 
 typedef struct { char *path,*url; guint resolution; gboolean subtitles; } Attempt;
 static char *socket_path,*lock_path,*pending,*subtitle_helper;
-static guint pending_resolution=720;
+static guint pending_resolution=360;
 static gboolean pending_subtitles;
 static GSubprocess *player;
 static GWeakRef parent_ref;

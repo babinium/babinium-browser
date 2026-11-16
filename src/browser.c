@@ -28,7 +28,7 @@ static int quit_after,eval_after=10,snapshot_after=15,probe_interval;
 static gboolean no_block,no_update,autoplay,audit,updating,setting_shield,setting_dark,favorites_readonly;
 static gboolean suspend_animations=TRUE,setting_animations,setting_mpv_resolution,setting_mpv_subtitles,mpv_subtitles;
 static const guint mpv_resolutions[]={144,240,360,480,720,1080};
-static guint mpv_resolution=720;
+static guint mpv_resolution=360;
 static gint cache_limit_mb;
 static gint64 start_time;
 static FILE *telemetry;
@@ -804,7 +804,7 @@ int main(int argc,char **argv){
         {"probe-interval",0,0,G_OPTION_ARG_INT,&probe_interval,"Muestrear estado del vídeo cada N segundos","N"},
         {"screenshot",0,0,G_OPTION_ARG_FILENAME,&opt_screenshot,"Guardar captura de la ventana","PNG"},
         {"snapshot-after",0,0,G_OPTION_ARG_INT,&snapshot_after,"Demora de captura","N"},{NULL}};
-    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.23");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
+    GOptionContext *opts=g_option_context_new("[URL ...] — Babinium Browser 0.4.24");g_option_context_add_main_entries(opts,options,NULL);g_option_context_add_group(opts,gtk_get_option_group(TRUE));
     GError *err=NULL;if(!g_option_context_parse(opts,&argc,&argv,&err)){g_printerr("%s\n",err->message);return 2;}g_option_context_free(opts);
     if(opt_telemetry){telemetry=fopen(opt_telemetry,"w");if(!telemetry){perror("telemetry");return 2;}}
     char exe[4096];ssize_t len=readlink("/proc/self/exe",exe,sizeof(exe)-1);if(len<0)return 2;exe[len]=0;bin_dir=g_path_get_dirname(exe);char *prefix=g_path_get_dirname(bin_dir);

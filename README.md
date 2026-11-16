@@ -152,7 +152,7 @@ todos los navegadores integrados.
   al anterior en el mismo MPV. «Abrir MPV» permite volver a abrir el video tras
   cerrar el reproductor; MPV puede seguir funcionando al cerrar el navegador.
   La resolución se elige entre 144p y 1080p en la pestaña «Babinium»; el valor
-  inicial es 720p y la elección se guarda. La opción «360p (máx. vel.)» prioriza
+  inicial es 360p (la opción de carga más rápida) y la elección se guarda. La opción «360p (máx. vel.)» prioriza
   la descarga rápida de YouTube (ideal para reproducir a velocidades altas como
   3× sin cortes) manteniendo siempre el audio en español: si el video es
   originalmente en español usa el formato rápido aunque YouTube le haya puesto
